@@ -11,24 +11,85 @@ import { isSelfMode } from './src/self-store.js';
 
 const pluginCache = new Map();
 
+const normalizePlugin = (plugin, file) => {
+    if (!plugin || typeof plugin !== 'object') {
+        throw new TypeError('default export must be an object');
+    }
+
+    if (!Array.isArray(plugin.command) || plugin.command.length === 0) {
+        throw new TypeError('command must be a non-empty array');
+    }
+
+    if (typeof plugin.run !== 'function') {
+        throw new TypeError('run must be a function');
+    }
+
+    const command = [...new Set(
+        plugin.command
+            .filter(value => typeof value === 'string')
+            .map(value => value.trim())
+            .filter(Boolean)
+    )];
+
+    if (command.length === 0) {
+        throw new TypeError('command must contain at least one non-empty string');
+    }
+
+    return {
+        ...plugin,
+        command,
+        name: typeof plugin.name === 'string' && plugin.name.trim()
+            ? plugin.name.trim()
+            : file.replace(/\.js$/, ''),
+        description: typeof plugin.description === 'string'
+            ? plugin.description.trim()
+            : '',
+        category: Array.isArray(plugin.category)
+            ? plugin.category
+                .filter(value => typeof value === 'string')
+                .map(value => value.trim().toLowerCase())
+                .filter(Boolean)
+            : [],
+        ownerOnly: plugin.ownerOnly === true
+    };
+};
+
+const registerPlugin = (map, plugin, file) => {
+    for (const command of plugin.command) {
+        const previous = map.get(command);
+
+        if (previous && previous !== plugin) {
+            console.warn(
+                `[plugins] command collision: "${command}" ` +
+                `${previous.name ?? 'unknown'} -> ${plugin.name}`
+            );
+        }
+
+        map.set(command, plugin);
+    }
+};
+
 async function loadPlugins() {
-    if (!existsSync(cfg.path.plugins)) return;
+    if (!existsSync(cfg.path.plugins)) {
+        plugins.clear();
+        pluginCache.clear();
+        console.warn(`[plugins] directory not found: ${cfg.path.plugins}`);
+        return;
+    }
 
     const files = await readdir(cfg.path.plugins);
     const next = new Map();
     const newCache = new Map();
 
-    for (const file of files) {
+    for (const file of files.sort()) {
         if (!file.endsWith('.js')) continue;
 
         const filePath = resolve(cfg.path.plugins, file);
         const { mtimeMs } = await stat(filePath);
         const cached = pluginCache.get(file);
 
-        if (cached && cached.mtimeMs === mtimeMs) {
-            for (const cmd of cached.plugin.command) {
-                next.set(cmd, cached.plugin);
-            }
+        if (cached?.mtimeMs === mtimeMs) {
+            registerPlugin(next, cached.plugin, file);
             newCache.set(file, cached);
             continue;
         }
@@ -38,50 +99,23 @@ async function loadPlugins() {
 
         try {
             const mod = await import(url.href);
-            const plugin = mod.default;
+            const plugin = normalizePlugin(mod.default, file);
 
-            if (
-                !plugin?.command?.length ||
-                typeof plugin.run !== 'function'
-            ) {
-                console.warn(
-                    `[plugins] skipping ${file}: missing command or run`
-                );
-                if (cached) {
-                    for (const cmd of cached.plugin.command) {
-                        next.set(cmd, cached.plugin);
-                    }
-                    newCache.set(file, cached);
-                }
-                continue;
-            }
-
-            for (const cmd of plugin.command) {
-                next.set(cmd, plugin);
-            }
+            registerPlugin(next, plugin, file);
             newCache.set(file, { plugin, mtimeMs });
         } catch (err) {
             console.warn(`[plugins] failed to load ${file}:`, err.message);
+
             if (cached) {
-                for (const cmd of cached.plugin.command) {
-                    next.set(cmd, cached.plugin);
-                }
+                registerPlugin(next, cached.plugin, file);
                 newCache.set(file, cached);
             }
         }
     }
 
-    for (const [file, cached] of pluginCache) {
-        if (!newCache.has(file)) {
-            for (const cmd of cached.plugin.command) {
-                next.delete(cmd);
-            }
-        }
-    }
-
     plugins.clear();
-    for (const [cmd, plugin] of next) {
-        plugins.set(cmd, plugin);
+    for (const [command, plugin] of next) {
+        plugins.set(command, plugin);
     }
 
     pluginCache.clear();
@@ -113,23 +147,15 @@ function watchPlugins() {
 if (existsSync(cfg.path.plugins)) {
     await loadPlugins();
     watchPlugins();
-} else {
-    console.log(`[plugins] directory not found: ${cfg.path.plugins}`);
 }
 
 const handleMessage = async (event, sock) => {
-    if (!event.message) {
-        console.log('[handler] no event.message');
-        return;
-    }
+    if (!event?.message) return;
 
     const m = messageSerialize(event, sock);
     const jid = m.key?.remoteJid;
 
-    if (!jid) {
-        console.log('[handler] no jid');
-        return;
-    }
+    if (!jid) return;
 
     const rawText = (m.text ?? '').trim();
     if (!rawText) return;
@@ -141,13 +167,8 @@ const handleMessage = async (event, sock) => {
 
     const owner = isOwner(m);
 
-    if (plugin.ownerOnly && !owner) {
-        return;
-    }
-
-    if (isSelfMode(jid) && !owner) {
-        return;
-    }
+    if (plugin.ownerOnly && !owner) return;
+    if (isSelfMode(jid) && !owner) return;
 
     const ctx = {
         sock,
@@ -167,4 +188,4 @@ const handleMessage = async (event, sock) => {
     }
 };
 
-export { handleMessage };
+export { handleMessage, loadPlugins };
