@@ -1,154 +1,145 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
-import { createPinoLogger, WaClient } from "zapo-js";
+import { createPinoLogger, WaClient } from 'zapo-js';
+import { WebSocket } from 'ws';
 
-import { WebSocket } from "ws";
+import cfg from './config.js';
 
-import cfg from "./config.js";
-
-import { chatStore } from "./src/chats-store.js";
-import { contactStore } from "./src/contacts-store.js";
-import { messageStore } from "./src/messages-store.js";
-
-import { bindGroupEvents, fetchAllGroups } from "./src/group-store.js";
-
-import { handleMessage } from "./handler.js";
-
+import { contactStore } from './src/contacts-store.js';
+import { messageStore } from './src/messages-store.js';
+import { bindGroupEvents, fetchAllGroups } from './src/group-store.js';
+import { handleMessage } from './handler.js';
 import {
-  serializeContactFromMessage,
-  serializeSelfContact,
-} from "./src/serialize/contact.js";
+    serializeContactFromMessage,
+    serializeSelfContact
+} from './src/serialize/contact.js';
 
-const logger = await createPinoLogger({ level: "error" });
+const logger = await createPinoLogger({ level: 'error' });
 
 globalThis.WebSocket = WebSocket;
 
 await fs.mkdir(path.dirname(cfg.path.authState), {
-  recursive: true,
+    recursive: true
 });
 
 function bindStoreEvents(sock) {
-  sock.on("message", event => {
-    messageStore.insert(event);
+    sock.on('message', event => {
+        messageStore.insert(event);
 
-    const derived = serializeContactFromMessage(event);
+        const contact = serializeContactFromMessage(event);
+        if (contact) contactStore.upsertAndGet(contact);
 
-    if (derived) {
-      contactStore.upsertAndGet(derived);
-    }
+        void handleMessage(event, sock);
+    });
 
-    handleMessage(event, sock);
-  });
-
-  bindGroupEvents(sock);
+    bindGroupEvents(sock);
 }
 
 let pairingRequested = false;
 
 function bindAuthEvents(sock) {
-  sock.on("auth_qr", () => {
-    if (pairingRequested || !cfg.botNumber) return;
+    sock.on('auth_qr', () => {
+        if (pairingRequested) return;
 
-    pairingRequested = true;
+        pairingRequested = true;
+        void requestPairingCode(sock);
+    });
 
-    requestPairingCode(sock);
-  });
-
-  sock.on("auth_paired", ({ credentials }) => {
-    console.log("paired as", credentials.meJid);
-  });
+    sock.on('auth_paired', ({ credentials }) => {
+        console.log('paired as', credentials.meJid);
+    });
 }
 
 async function requestPairingCode(sock) {
-  try {
-    const code = await sock.auth.requestPairingCode(
-      cfg.botNumber,
-      true,
-      cfg.pairingCode,
-    );
+    try {
+        const code = await sock.auth.requestPairingCode(
+            cfg.botNumber,
+            true,
+            cfg.pairingCode
+        );
 
-    console.log(`pairing code: ${code.match(/.{1,4}/g).join("-")}`);
-  } catch (err) {
-    pairingRequested = false;
-    console.error("[bot]", err);
-  }
+        console.log(`pairing code: ${code.match(/.{1,4}/g).join('-')}`);
+    } catch (err) {
+        pairingRequested = false;
+        console.error('[bot] pairing failed:', err);
+    }
 }
 
 function bindConnectionEvents(sock) {
-  sock.on("connection", event => {
-    if (event.status === "open") {
-      console.log("bot connected");
+    sock.on('connection', event => {
+        if (event.status === 'open') {
+            console.log('bot connected');
 
-      const self = serializeSelfContact(sock);
+            const self = serializeSelfContact(sock);
+            if (self) contactStore.upsertAndGet(self);
 
-      if (self) {
-        contactStore.upsertAndGet(self);
-      }
+            void fetchAllGroups(sock).catch(err => {
+                console.error('[bot] group sync failed:', err);
+            });
 
-      fetchAllGroups(sock).catch(err => {
-        console.error("[bot]", err);
-      });
+            return;
+        }
 
-      return;
-    }
+        if (event.isLogout) {
+            void fs.rm(cfg.path.authState, {
+                recursive: true,
+                force: true
+            });
 
-    if (event.isLogout) {
-      fs.rm(cfg.path.authState, {
-        recursive: true,
-        force: true,
-      }).catch(() => {});
+            console.log('logged out');
+            return;
+        }
 
-      console.log("logged out");
-      return;
-    }
+        console.log('reconnecting...');
 
-    console.log("reconnecting...");
-
-    setTimeout(async () => {
-      try {
-        await sock.connect();
-      } catch (err) {
-        console.error("[bot] reconnect failed:", err);
-      }
-    }, 3000);
-  });
+        setTimeout(() => {
+            void sock.connect().catch(err => {
+                console.error('[bot] reconnect failed:', err);
+            });
+        }, 3000);
+    });
 }
 
 async function start() {
-  const sock = new WaClient(
-    {
-      store: cfg.store,
-      sessionId: cfg.sessionId,
-      markOnlineOnConnect: true,
-      history: { enabled: true, requireFullSync: true },
-    },
-    logger,
-  );
+    const sock = new WaClient(
+        {
+            store: cfg.store,
+            sessionId: cfg.sessionId,
+            markOnlineOnConnect: true,
+            history: {
+                enabled: true,
+                requireFullSync: true
+            }
+        },
+        logger
+    );
 
-  bindAuthEvents(sock);
-  bindConnectionEvents(sock);
-  bindStoreEvents(sock);
+    bindAuthEvents(sock);
+    bindConnectionEvents(sock);
+    bindStoreEvents(sock);
 
-  const shutdown = async () => {
-    console.log("shutting down...");
-    try {
-      await sock.logout();
-    } catch {
-      // ignore logout errors during shutdown
-    }
-    try {
-      await cfg.store.destroy();
-    } catch {
-      // ignore store destroy errors
-    }
-    process.exit(0);
-  };
+    let shuttingDown = false;
 
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+    const shutdown = async signal => {
+        if (shuttingDown) return;
+        shuttingDown = true;
 
-  await sock.connect();
+        console.log(`shutting down (${signal})...`);
+
+        try {
+            await cfg.store.destroy();
+        } catch (err) {
+            console.error('[bot] store cleanup failed:', err);
+        }
+
+        process.exit(0);
+    };
+
+    process.on('SIGINT', () => void shutdown('SIGINT'));
+    process.on('SIGTERM', () => void shutdown('SIGTERM'));
+
+    await sock.connect();
 }
 
 await start();
