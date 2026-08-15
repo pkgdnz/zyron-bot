@@ -1,4 +1,4 @@
-name: Check
+name: Lint
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [master]
 
 jobs:
-  syntax:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,5 +18,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Check JavaScript syntax
-        run: node scripts/check.mjs
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: npm run lint
