@@ -1,3 +1,5 @@
+import cfg from '../../config.js';
+
 const paymentButton = () => ({
   interactiveMessage: {
     body: {
@@ -13,10 +15,10 @@ const paymentButton = () => ({
                 type: "payment_key",
                 payment_key: {
                   type: "IDPAYMENTACCOUNT",
-                  key: "083187820160",
-                  name: "DANA",
-                  institution_name: "DANA",
-                  full_name_on_account: "NORXXX",
+                  key: process.env.PAYMENT_KEY || "",
+                  name: process.env.PAYMENT_INSTITUTION || "DANA",
+                  institution_name: process.env.PAYMENT_INSTITUTION || "DANA",
+                  full_name_on_account: process.env.PAYMENT_FULL_NAME || "",
                   account_type: "ewallet",
                 },
               },

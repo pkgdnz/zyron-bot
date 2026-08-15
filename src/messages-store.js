@@ -2,6 +2,15 @@ import stmt from './database/table.js';
 import { serializeMessage, deserializeMessage } from './serialize/message.js';
 import { toTimestamp } from './util.js';
 
+const UNSTORABLE = new Set([
+  'protocolMessage',
+  'senderKeyDistributionMessage',
+  'messageContextInfo',
+  'reactionMessage',
+  'encReactionMessage',
+  'unavailableMessage'
+]);
+
 class MessageStore {
     constructor() {
         const { count } = stmt.messages.count.get();
@@ -13,6 +22,9 @@ class MessageStore {
         const keyId = message.key?.id;
 
         if (!remoteJid || !keyId) return;
+
+        const msgType = message.messageStubType;
+        if (msgType && UNSTORABLE.has(msgType)) return;
 
         const raw = serializeMessage(message);
 

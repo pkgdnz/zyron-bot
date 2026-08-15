@@ -71,6 +71,29 @@ if (messagesExists) {
         }
 
         db.exec(`ALTER TABLE messages RENAME TO ${legacyName}`);
+
+        const legacyColumns = db.prepare(`PRAGMA table_info(${legacyName})`).all();
+        const legacyColumnNames = new Set(legacyColumns.map(c => c.name));
+        const hasJid = legacyColumnNames.has('jid');
+        const hasKey = legacyColumnNames.has('key');
+        const hasData = legacyColumnNames.has('data');
+
+        if (hasJid && hasKey) {
+            const insert = db.prepare(`
+                INSERT OR IGNORE INTO messages (remote_jid, key_id, timestamp, raw)
+                SELECT
+                    jid,
+                    key,
+                    COALESCE(timestamp, 0),
+                    COALESCE(data, '{}')
+                FROM ${legacyName}
+            `);
+
+            const { changes } = insert.run();
+            console.log(`[database] migrated ${changes} messages from ${legacyName}`);
+        } else {
+            console.log(`[database] legacy table ${legacyName} kept as-is (incompatible schema)`);
+        }
     }
 }
 

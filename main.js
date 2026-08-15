@@ -130,6 +130,24 @@ async function start() {
   bindConnectionEvents(sock);
   bindStoreEvents(sock);
 
+  const shutdown = async () => {
+    console.log("shutting down...");
+    try {
+      await sock.logout();
+    } catch {
+      // ignore logout errors during shutdown
+    }
+    try {
+      await cfg.store.destroy();
+    } catch {
+      // ignore store destroy errors
+    }
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+
   await sock.connect();
 }
 

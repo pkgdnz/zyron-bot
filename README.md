@@ -90,6 +90,9 @@ Buat file `.env` berdasarkan `.env.example`:
 | `BOT_NUMBER` | Nomor WhatsApp bot (tanpa +, tanpa leading 0) | `6283851010908` |
 | `PAIRING_CODE` | Kode pairing untuk multi-device | `PKGDNZLF` |
 | `SESSION_ID` | ID sesi autentikasi | `default` |
+| `PAYMENT_KEY` | Nomor rekening DANA untuk tombol pembayaran | `083187820160` |
+| `PAYMENT_INSTITUTION` | Nama institusi pembayaran | `DANA` |
+| `PAYMENT_FULL_NAME` | Nama lengkap pemilik akun pembayaran | `NORXXX` |
 
 ## Menjalankan Bot
 
@@ -149,7 +152,7 @@ Project menggunakan SQLite dengan dua database:
   - `self_settings` — Konfigurasi self mode global
   - `self_groups` — Override self mode per grup
 
-Catatan: domain `messages`, `threads`, dan `contacts` dari `zapo-js` dinonaktifkan (`none`), sehingga data tersebut tidak diarsipkan oleh library. Database diinisialisasi otomatis saat startup. Struktur tabel dibuat dengan `CREATE TABLE IF NOT EXISTS` dan migrasi kolom legacy pesan ditangani di `src/database/database.js`.
+Catatan: domain `messages`, `threads`, dan `contacts` dari `zapo-js` dinonaktifkan (`none`), sehingga data tersebut tidak diarsipkan oleh library. Database diinisialisasi otomatis saat startup. Struktur tabel dibuat dengan `CREATE TABLE IF NOT EXISTS`. Jika terdeteksi tabel `messages` legacy tanpa kolom `remote_jid`, data akan dimigrasikan secara otomatis ke schema baru (ditangani di `src/database/database.js`).
 
 ## Arsitektur
 
@@ -159,7 +162,6 @@ main.js
   ├── WaClient (zapo-js)
   │   ├── Event: auth_qr / auth_paired
   │   ├── Event: connection (open / reconnect / logout)
-  │   ├── Event: history_sync_chunk → chatStore
   │   ├── Event: message → messageStore, contactStore, handleMessage
   │   └── Event: group → groupStore
   └── handler.js
@@ -172,12 +174,15 @@ main.js
 
 Tidak ada mode development khusus. Perubahan pada plugin akan hot-reload otomatis. Untuk perubahan pada core module, restart bot dengan `npm start`.
 
+Bot menangani `SIGINT` dan `SIGTERM` untuk cleanup store sebelum exit.
+
 ## Troubleshooting
 
 - **Bot tidak terhubung**: Pastikan `BOT_NUMBER` dan `PAIRING_CODE` valid, dan bot dapat mengakses WhatsApp server.
 - **Plugin tidak loaded**: Pastikan file plugin berada di `src/plugins/`, berekstensi `.js`, dan memiliki `command` serta `run`.
-- **Database error**: Hapus file `data/database.db` dan `data/auth.db` untuk reset (akan membuat ulang saat startup).
+- **Database error**: Hapus file `data/database.db` dan `data/auth.db` untuk reset (akan membuat ulang saat startup). Tabel legacy `messages` akan dimigrasikan secara otomatis jika terdeteksi schema lama.
 - **Eval tidak bekerja**: Pastikan JavaScript syntax valid dan tidak ReferenceError.
+- **Pembayaran tidak muncul**: Pastikan `PAYMENT_KEY`, `PAYMENT_INSTITUTION`, dan `PAYMENT_FULL_NAME` diisi di `.env`.
 
 ## Lisensi
 
