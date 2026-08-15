@@ -1,7 +1,7 @@
 import util from 'node:util';
 import { isOwner } from '../owner.js';
 
-const run = async ({ m, q, text, sock, jid }) => {
+const run = async ({ m, q, text }) => {
    if (!isOwner(m)) return;
 
    const target = q || m;
