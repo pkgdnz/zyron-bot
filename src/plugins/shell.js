@@ -4,7 +4,7 @@ import { isOwner } from '../owner.js';
 
 const sh = promisify(exec);
 
-const run = async ({ m, text, sock, jid }) => {
+const run = async ({ m, text }) => {
    if (!isOwner(m)) return;
 
    if (!text) {
