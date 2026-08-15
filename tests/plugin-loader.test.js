@@ -18,6 +18,20 @@ beforeEach(async () => {
     };
 
     vi.doMock('../config.js', () => ({ default: config }));
+    vi.doMock('../src/serialize/serialize.js', () => ({
+        messageSerialize: () => ({}),
+        contentSerialize: () => ({}),
+        chatSerialize: () => null,
+        contactSerialize: () => null,
+        quotedSerialize: () => null
+    }));
+    vi.doMock('../src/owner.js', () => ({
+        isOwner: () => false
+    }));
+    vi.doMock('../src/self-store.js', () => ({
+        isSelfMode: () => false
+    }));
+
     ({ plugins } = await import('../src/plugin-registry.js'));
     ({ loadPlugins } = await import('../handler.js'));
 });
