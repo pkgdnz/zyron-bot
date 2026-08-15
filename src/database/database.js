@@ -76,7 +76,6 @@ if (messagesExists) {
         const legacyColumnNames = new Set(legacyColumns.map(c => c.name));
         const hasJid = legacyColumnNames.has('jid');
         const hasKey = legacyColumnNames.has('key');
-        const hasData = legacyColumnNames.has('data');
 
         if (hasJid && hasKey) {
             const insert = db.prepare(`
