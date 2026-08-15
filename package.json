@@ -17,7 +17,7 @@
   ],
   "scripts": {
     "start": "node main.js",
-    "check": "node scripts/check.mjs"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@zapo-js/store-sqlite": "latest",
@@ -28,6 +28,10 @@
     "qrcode-terminal": "latest",
     "ws": "latest",
     "zapo-js": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "eslint": "latest"
   },
   "allowScripts": {
     "better-sqlite3": true,
