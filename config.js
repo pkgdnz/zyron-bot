@@ -11,30 +11,35 @@ const res = (...paths) => path.resolve(import.meta.dirname, ...paths);
 
 const pathConfig = Object.freeze({
   authState: res("data", "auth.db"),
+  archive: res("data", "archive.db"),
   database: res("data", "database.db"),
   plugins: res("src", "plugins"),
 });
 
 const store = createStore({
   backends: {
-    sqlite: createSqliteStore({
+    auth: createSqliteStore({
       path: pathConfig.authState,
+      driver: "auto",
+    }),
+    archive: createSqliteStore({
+      path: pathConfig.archive,
       driver: "auto",
     }),
   },
 
   providers: {
-    auth: "sqlite",
-    signal: "sqlite",
-    preKey: "sqlite",
-    session: "sqlite",
-    identity: "sqlite",
-    senderKey: "sqlite",
-    appState: "sqlite",
-    privacyToken: "sqlite",
-    messages: "sqlite",
-    threads: "sqlite",
-    contacts: "sqlite",
+    auth: "auth",
+    signal: "auth",
+    preKey: "auth",
+    session: "auth",
+    identity: "auth",
+    senderKey: "auth",
+    appState: "auth",
+    privacyToken: "auth",
+    messages: "archive",
+    threads: "archive",
+    contacts: "archive",
   },
 });
 
