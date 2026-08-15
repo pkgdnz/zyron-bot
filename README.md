@@ -14,7 +14,7 @@ Zyron Bot is designed as a simple, modular base for personal WhatsApp automation
 - 🧠 Global self mode with per-group overrides
 - 🛠️ Built-in JavaScript and shell tools for owner development
 - 📋 Automatic command/category menu generation
-- 🔎 ESLint-based source validation with GitHub Actions
+- 🔎 ESLint + Vitest validation with GitHub Actions
 - ⚡ Lightweight Node.js runtime
 
 ## 📋 Requirements
@@ -64,8 +64,6 @@ SESSION_ID=default
 Keep `.env` and the `data/` directory private. `data/auth.db` contains WhatsApp authentication/session state.
 
 ## ▶️ Running the Bot
-
-Start the bot with:
 
 ```bash
 npm start
@@ -232,7 +230,13 @@ zyron-bot/
 ├── .env.example                # Environment variable template
 ├── .github/
 │   └── workflows/
-│       └── check.yml           # GitHub Actions lint workflow
+│       └── check.yml           # GitHub Actions lint + test workflow
+├── tests/
+│   ├── handler.test.js         # Command routing and guards
+│   ├── owner.test.js           # Owner detection
+│   ├── plugin-loader.test.js   # Plugin normalization/loading
+│   ├── self-store.test.js      # Self mode state
+│   └── serialize.test.js       # Message serialization
 ├── src/
 │   ├── plugins/                # Built-in and custom plugins
 │   ├── database/               # SQLite schema and prepared statements
@@ -263,10 +267,10 @@ WhatsApp / Zapo JS
         └── group events
                 │
                 ▼
-          local stores
+             local stores
                 │
                 ▼
-           handler.js
+            handler.js
                 │
         ┌───────┼────────┐
         ▼       ▼        ▼
@@ -305,33 +309,47 @@ Use ESLint for source validation:
 npm run lint
 ```
 
-The same lint command is executed by GitHub Actions for pushes and pull requests targeting `master`.
+### Run tests
+
+Run the Vitest suite:
+
+```bash
+npm test
+```
+
+The test suite focuses on the core contracts that are most likely to regress: message serialization, owner detection, command routing, self mode, and plugin loading/normalization.
+
+The GitHub Actions workflow runs both linting and tests for pushes and pull requests targeting `master`.
 
 ## 🔧 Troubleshooting
 
 ### Pairing does not start
 
-Check that `OWNER`, `BOT_NUMBER`, `PAIRING_CODE`, and `SESSION_ID` are present in `.env`. Configuration validation runs during startup.
+Check that `OWNER`, `BOT_NUMBER`, `PAIRING_CODE`, and `SESSION_ID` exist in `.env`. Configuration is validated during startup.
 
 ### The bot does not respond
 
-Confirm that the command exactly matches a loaded plugin. Also check whether the command is marked `ownerOnly` and whether self mode is active for the current chat.
+Confirm that the command exactly matches a loaded plugin. Also check `ownerOnly` and self-mode state for the current chat.
 
 ### A plugin is not loaded
 
-Verify that the file:
-
-- Is located inside `src/plugins/`
-- Ends with `.js`
-- Exports a default plugin object
-- Contains a non-empty `command` array
-- Defines `run` as a function
-
-Then check the console for a plugin loader warning or import error.
+Make sure the file is inside `src/plugins/`, ends in `.js`, exports a default plugin object, contains a non-empty `command` array, and defines `run` as a function.
 
 ### A plugin command collides with another plugin
 
-The loader reports command collisions in the console. Give commands unique names unless an intentional override is required.
+The loader reports command collisions in the console. Give each command a unique owner unless intentionally overriding it.
+
+### Lint or tests fail
+
+Run the checks locally:
+
+```bash
+npm install
+npm run lint
+npm test
+```
+
+Read the first failing file and test name before changing runtime code. The test suite uses mocks for WhatsApp/runtime dependencies where needed, so it does not require an active WhatsApp session.
 
 ### Database problems
 
@@ -341,41 +359,26 @@ Deleting `data/database.db` resets application data. Deleting `data/auth.db` res
 
 ### WhatsApp session was logged out
 
-If the WhatsApp account is logged out or its session is invalidated externally, the stored authentication state may no longer be usable. Pair the account again after the authentication state has been removed.
-
-## 🔎 Linting & CI
-
-Local validation:
-
-```bash
-npm run lint
-```
-
-GitHub Actions runs the same ESLint command on pushes and pull requests to `master`. The workflow validates source code without starting the WhatsApp bot.
+A real logout or an external device removal invalidates the stored authentication state. Pair the bot again after the session has been removed.
 
 ## 📦 Dependencies
 
-Runtime dependencies include:
+Core runtime dependencies include:
 
 - `zapo-js` — WhatsApp multi-device client
-- `@zapo-js/store-sqlite` — SQLite-backed Zapo JS store
-- `better-sqlite3` — SQLite database driver
-- `dotenv` — Environment variable loading
+- `@zapo-js/store-sqlite` — SQLite store for Zapo JS
+- `better-sqlite3` — SQLite driver
+- `dotenv` — Environment loading
 - `pino` / `pino-pretty` — Logging
 - `ws` — WebSocket implementation
 
 Development tooling includes:
 
-- `eslint` — JavaScript linting
+- `eslint` — Static code analysis
 - `@eslint/js` — ESLint's recommended JavaScript rules
+- `vitest` — Unit and integration-style test runner
 
-See [`package.json`](./package.json) for the current dependency declarations and scripts.
-
-## 📌 Notes
-
-This project is primarily a personal bot base. It intentionally prioritizes straightforward customization and owner-controlled tooling over multi-tenant architecture or large-scale production deployment.
-
-The `data/` directory contains runtime state and should remain outside version control.
+See [`package.json`](./package.json) for the current dependency declarations.
 
 ## 📄 License
 
