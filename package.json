@@ -1,0 +1,35 @@
+{
+  "name": "zyron-bot",
+  "version": "1.0.0",
+  "description": "Base WhatsApp multi-device bot powered by Zapo JS.",
+  "type": "module",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "dnz",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "whatsapp-bot",
+    "zapo-bot",
+    "multi-device"
+  ],
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "@zapo-js/store-sqlite": "latest",
+    "better-sqlite3": "latest",
+    "dotenv": "latest",
+    "pino": "latest",
+    "pino-pretty": "latest",
+    "qrcode-terminal": "latest",
+    "ws": "latest",
+    "zapo-js": "latest"
+  },
+  "allowScripts": {
+    "better-sqlite3": true,
+    "zapo-js": true
+  }
+}
