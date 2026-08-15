@@ -139,10 +139,9 @@ export default plugin;
 
 ## Database
 
-Project menggunakan SQLite dengan tiga database:
+Project menggunakan SQLite dengan dua database:
 
 - **`data/auth.db`** — Disimpan dan dikelola oleh `zapo-js` untuk state autentikasi multi-device, kunci sinyal, sesi, identity, sender key, app state, dan privacy token (tidak di-commit).
-- **`data/archive.db`** — Arsip `zapo-js` untuk messages, threads, dan contacts (tidak di-commit).
 - **`data/database.db`** — Database aplikasi yang menyimpan:
   - `contacts` — Kontak (lid, pn, push_name)
   - `chats` — Chat/grup (jid, name)
@@ -150,7 +149,7 @@ Project menggunakan SQLite dengan tiga database:
   - `self_settings` — Konfigurasi self mode global
   - `self_groups` — Override self mode per grup
 
-Database diinisialisasi otomatis saat startup. Struktur tabel dibuat dengan `CREATE TABLE IF NOT EXISTS` dan migrasi kolom legacy pesan ditangani di `src/database/database.js`.
+Catatan: domain `messages`, `threads`, dan `contacts` dari `zapo-js` dinonaktifkan (`none`), sehingga data tersebut tidak diarsipkan oleh library. Database diinisialisasi otomatis saat startup. Struktur tabel dibuat dengan `CREATE TABLE IF NOT EXISTS` dan migrasi kolom legacy pesan ditangani di `src/database/database.js`.
 
 ## Arsitektur
 
@@ -177,7 +176,7 @@ Tidak ada mode development khusus. Perubahan pada plugin akan hot-reload otomati
 
 - **Bot tidak terhubung**: Pastikan `BOT_NUMBER` dan `PAIRING_CODE` valid, dan bot dapat mengakses WhatsApp server.
 - **Plugin tidak loaded**: Pastikan file plugin berada di `src/plugins/`, berekstensi `.js`, dan memiliki `command` serta `run`.
-- **Database error**: Hapus file `data/database.db`, `data/auth.db`, dan `data/archive.db` untuk reset (akan membuat ulang saat startup).
+- **Database error**: Hapus file `data/database.db` dan `data/auth.db` untuk reset (akan membuat ulang saat startup).
 - **Eval tidak bekerja**: Pastikan JavaScript syntax valid dan tidak ReferenceError.
 
 ## Lisensi
