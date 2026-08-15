@@ -2,18 +2,19 @@
 
 A personal WhatsApp multi-device bot base built with [Zapo JS](https://github.com/zapoproject/zapo-js).
 
-Zyron Bot is designed to stay simple, modular, and easy to customize. Features are implemented as plugins, plugin changes are hot-reloaded, and application state is persisted locally with SQLite.
+Zyron Bot is designed as a simple, modular base for personal WhatsApp automation. Features are implemented as plugins, plugin changes are hot-reloaded, and application data is persisted locally with SQLite.
 
 ## ✨ Features
 
-- 📱 WhatsApp multi-device connection with pairing code authentication
-- 🧩 File-based plugin system
+- 📱 WhatsApp multi-device connection with pairing-code authentication
+- 🧩 File-based plugin architecture
 - ♻️ Automatic plugin hot-reloading
 - 🗄️ SQLite-backed message, chat, contact, and self-mode storage
-- 👑 Owner-only command support
+- 👑 Central owner-only command protection
 - 🧠 Global self mode with per-group overrides
 - 🛠️ Built-in JavaScript and shell tools for owner development
-- 📂 Command categories and automatic menu generation
+- 📋 Automatic command/category menu generation
+- 🔎 ESLint-based source validation with GitHub Actions
 - ⚡ Lightweight Node.js runtime
 
 ## 📋 Requirements
@@ -23,7 +24,7 @@ Zyron Bot is designed to stay simple, modular, and easy to customize. Features a
 - Internet access
 - A WhatsApp account to use as the bot account
 
-No external SQLite server is required. SQLite is provided by `better-sqlite3` and `@zapo-js/store-sqlite`.
+No external SQLite server is required. SQLite is provided through `better-sqlite3` and `@zapo-js/store-sqlite`.
 
 ## 🚀 Installation
 
@@ -42,12 +43,12 @@ npm start
 
 ## ⚙️ Configuration
 
-Zyron Bot requires these environment variables:
+Zyron Bot reads its configuration from environment variables:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `OWNER` | Yes | Owner's WhatsApp number. International format, without `+`. |
-| `BOT_NUMBER` | Yes | WhatsApp number used by the bot. |
+| `OWNER` | Yes | Owner's WhatsApp number in international format, without `+`. |
+| `BOT_NUMBER` | Yes | WhatsApp number that will be paired with the bot. |
 | `PAIRING_CODE` | Yes | Pairing code requested during authentication. |
 | `SESSION_ID` | Yes | Zapo JS session identifier. |
 
@@ -60,39 +61,41 @@ PAIRING_CODE=ZYRONBOT
 SESSION_ID=default
 ```
 
-Keep `.env` and the `data/` directory private. Authentication state contains sensitive session information.
+Keep `.env` and the `data/` directory private. `data/auth.db` contains WhatsApp authentication/session state.
 
-## ▶️ Running
+## ▶️ Running the Bot
+
+Start the bot with:
 
 ```bash
 npm start
 ```
 
-On first launch, the bot requests a pairing code for `BOT_NUMBER`. After pairing succeeds, the session is persisted in `data/auth.db` so normal restarts do not require pairing again.
+On the first launch, Zyron Bot requests a pairing code for `BOT_NUMBER`. After pairing succeeds, the authentication state is stored in `data/auth.db`, allowing normal process restarts without pairing again.
 
-Graceful shutdown closes the local store without intentionally logging the WhatsApp account out. A real WhatsApp logout is handled separately by the connection lifecycle.
+A normal `SIGINT` or `SIGTERM` shutdown cleans up the local runtime without intentionally logging the WhatsApp account out. A real WhatsApp logout is handled separately by the connection lifecycle.
 
 ## 🤖 Built-in Commands
 
 | Command | Owner Only | Description |
 | --- | --- | --- |
-| `ping` | No | Check bot response. |
-| `mem` | No | Show process memory usage. |
-| `menu` | No | Show available categories. |
-| `menu <category>` | No | Show commands inside a category. |
-| `run` | Yes | Execute asynchronous JavaScript from text or a replied `.js` document. |
+| `ping` | No | Send a simple ping response. |
+| `mem` | No | Show current process memory usage. |
+| `menu` | No | Show available command categories. |
+| `menu <category>` | No | Show commands inside a specific category. |
+| `run` | Yes | Execute asynchronous JavaScript from command text or a replied text/`.js` document. |
 | `!` | Yes | Execute JavaScript synchronously. |
 | `!!` | Yes | Execute JavaScript asynchronously. |
 | `$` | Yes | Execute a shell command. |
 | `self` | Yes | Toggle global self mode. |
-| `self -gc on/off` | Yes | Override self mode for the current group. |
+| `self -gc on/off` | Yes | Enable or disable self mode for the current group. |
 | `cms` | No | Generate reproduction code for a quoted message. |
 
 ### 👑 Owner-only tools
 
-Owner-only commands are blocked by the central message handler before the plugin is executed. The plugins also keep their own owner checks for privileged operations.
+Owner-only commands are blocked centrally by the message handler before the plugin runs. Privileged plugins also perform their own owner checks where appropriate.
 
-`!`, `!!`, `run`, and `$` are intentionally privileged development tools. Treat them as full local-code execution features and keep the bot account and session private.
+`!`, `!!`, `run`, and `$` are intentionally powerful development tools. They execute JavaScript or shell commands with the permissions of the bot process, so the bot account and authentication state should be treated as private.
 
 ## 🧩 Plugin System
 
@@ -102,9 +105,9 @@ Plugins live in:
 src/plugins/
 ```
 
-Every `.js` file in this directory can be loaded as a plugin.
+Every `.js` file in this directory can be loaded by the plugin loader.
 
-### Example
+### Example Plugin
 
 Zyron Bot separates the handler function from the plugin metadata object:
 
@@ -120,7 +123,7 @@ const plugin = {
     name: 'ping',
     command: ['ping'],
     ownerOnly: false,
-    description: 'Check bot response.',
+    description: 'Send a simple ping response.',
     category: ['core']
 };
 
@@ -132,15 +135,17 @@ export default plugin;
 | Field | Type | Description |
 | --- | --- | --- |
 | `run` | `Function` | Function executed when the command is triggered. |
-| `name` | `String` | Plugin name used by logging and menus. |
-| `command` | `String[]` | Command triggers for the plugin. |
-| `ownerOnly` | `Boolean` | Restricts execution to the owner when `true`. |
+| `name` | `String` | Plugin name used for logging and menu metadata. |
+| `command` | `String[]` | Command triggers registered by the plugin. |
+| `ownerOnly` | `Boolean` | Restricts execution to the configured owner when `true`. |
 | `description` | `String` | Human-readable command description. |
-| `category` | `String[]` | Menu categories for the plugin. |
+| `category` | `String[]` | One or more menu categories for the plugin. |
+
+The loader requires a valid non-empty `command` array and a callable `run` function. Invalid plugins are skipped instead of terminating the bot.
 
 ### 🧰 Plugin context
 
-The handler passes a context object to `run`:
+The handler passes this context object to `run`:
 
 ```js
 const { sock, jid, m, q, text } = ctx;
@@ -151,65 +156,98 @@ const { sock, jid, m, q, text } = ctx;
 | `sock` | Active Zapo JS client. |
 | `jid` | Current chat JID. |
 | `m` | Serialized current message. |
-| `q` | Quoted message, if available. |
-| `text` | Command arguments as a string. |
+| `q` | Quoted/replied message, if available. |
+| `text` | Remaining command arguments as a string. |
 
-The serialized message also provides helpers such as `m.reply()` and `q.reply()` for common reply flows.
+Serialized messages also expose helpers such as `m.reply()` and `q.reply()` for common reply flows.
 
 ## ♻️ Hot Reloading
 
 The core loader watches `src/plugins/` with Node.js `fs.watch`.
 
-When a plugin is added, edited, replaced, or removed, Zyron Bot rebuilds the plugin registry automatically. Invalid plugins are skipped and logged instead of crashing the whole process.
+When a plugin is added, edited, replaced, or removed, Zyron Bot rebuilds the plugin registry automatically. A plugin is cached by file modification time, and a failed reload can keep the previous working version active.
 
-Command collisions are also reported so two plugins do not silently override each other without a warning.
+Command collisions are reported instead of being silently ignored, helping identify two plugins that register the same command.
 
-Changes to core files such as `main.js`, `handler.js`, `config.js`, and database modules require a normal process restart.
+Changes to core files such as `main.js`, `handler.js`, `config.js`, or database modules require a process restart.
+
+## 🧠 Self Mode
+
+Self mode determines whether the bot ignores messages from non-owner users in a chat.
+
+There are two levels of configuration:
+
+```text
+Global self mode
+      │
+      └── Group override
+          ├── on
+          ├── off
+          └── inherited from global
+```
+
+Use:
+
+```text
+self on
+self off
+self -gc on
+self -gc off
+```
+
+Global and per-group settings are persisted in SQLite and restored when the bot restarts.
+
+## 🗄️ Database
+
+Zyron Bot uses two separate SQLite databases.
+
+### `data/auth.db`
+
+Managed through Zapo JS. It stores WhatsApp authentication/session state such as credentials, signal state, sessions, identities, sender keys, app state, and privacy tokens.
+
+### `data/database.db`
+
+Managed by Zyron Bot. It stores application data such as:
+
+- `contacts` — Contact information and identifiers
+- `chats` — Chat/group metadata
+- `messages` — Serialized message records
+- `self_settings` — Global self-mode state
+- `self_groups` — Per-group self-mode overrides
+
+The schema is initialized automatically. The application also contains migration handling for recognized legacy `messages` schemas.
+
+SQLite is configured with WAL mode and foreign-key enforcement, while prepared statements are centralized in `src/database/table.js`.
 
 ## 📁 Project Structure
 
 ```text
 zyron-bot/
 ├── main.js                     # WhatsApp client lifecycle and event binding
-├── handler.js                  # Plugin loader, hot reload, and command routing
-├── config.js                   # Environment validation and storage config
+├── handler.js                  # Plugin loading, hot reload, and command routing
+├── config.js                   # Environment validation and storage configuration
+├── eslint.config.js            # ESLint configuration
 ├── package.json                # Metadata, scripts, and dependencies
-├── .env.example                # Environment template
-├── scripts/
-│   └── check.mjs               # JavaScript syntax validation
-├── .github/workflows/
-│   └── check.yml               # GitHub Actions syntax check
+├── package-lock.json           # Locked dependency tree
+├── .env.example                # Environment variable template
+├── .github/
+│   └── workflows/
+│       └── check.yml           # GitHub Actions lint workflow
 ├── src/
 │   ├── plugins/                # Built-in and custom plugins
 │   ├── database/               # SQLite schema and prepared statements
-│   ├── serialize/              # Message/chat/contact serialization
-│   ├── chats-store.js          # Chat state
-│   ├── contacts-store.js       # Contact state
+│   ├── serialize/              # Message, chat, and contact serialization
+│   ├── chats-store.js          # Chat state store
+│   ├── contacts-store.js       # Contact state store
 │   ├── messages-store.js       # Persistent message store
 │   ├── group-store.js          # Group state and events
 │   ├── self-store.js           # Global/group self-mode state
 │   ├── owner.js                # Owner detection
-│   └── message-resolve.js      # Message resolution helpers
-└── data/                       # Runtime SQLite data
+│   ├── plugin-registry.js      # Active plugin registry
+│   ├── message-resolve.js      # Message resolution helpers
+│   └── util.js                 # Shared utility helpers
+└── data/                       # Runtime SQLite data (local only)
 ```
-
-## 🗄️ Runtime Data
-
-### `data/auth.db`
-
-Zapo JS authentication/session state, including credentials, signal state, sessions, identities, sender keys, app state, and privacy tokens.
-
-### `data/database.db`
-
-Application-level data managed by Zyron Bot:
-
-- `contacts` — Contact information
-- `chats` — Chat and group metadata
-- `messages` — Serialized message records
-- `self_settings` — Global self-mode configuration
-- `self_groups` — Per-group self-mode overrides
-
-The application creates these tables automatically. Legacy `messages` schemas are migrated when recognized.
 
 ## 🏗️ Architecture
 
@@ -219,15 +257,16 @@ WhatsApp / Zapo JS
         ▼
      main.js
         │
-        ├── Authentication + connection lifecycle
-        ├── Message events
-        └── Group events
+        ├── authentication
+        ├── connection lifecycle
+        ├── message events
+        └── group events
                 │
                 ▼
-           Message stores
+          local stores
                 │
                 ▼
-            handler.js
+           handler.js
                 │
         ┌───────┼────────┐
         ▼       ▼        ▼
@@ -240,43 +279,59 @@ WhatsApp / Zapo JS
           plugin.run(ctx)
 ```
 
-The important boundary is the plugin API. Core WhatsApp lifecycle logic stays outside individual features, while plugins only receive the execution context they need.
+The main separation is between the WhatsApp lifecycle, local persistence, message routing, and plugin features. Plugins interact with the bot through the context API instead of handling the raw connection lifecycle themselves.
 
 ## 🛠️ Development
 
-Add or edit plugins inside `src/plugins/` and let hot reload apply the change.
+### Add a plugin
 
-For core changes, restart the process:
+Create a new `.js` file in `src/plugins/` and export a plugin object following the plugin format above.
+
+The file is picked up automatically by the hot-reload system while the bot is running.
+
+### Modify core code
+
+Changes to `main.js`, `handler.js`, `config.js`, serializers, stores, or database modules require a normal restart:
 
 ```bash
 npm start
 ```
 
-Before committing, run the built-in syntax check:
+### Lint the project
+
+Use ESLint for source validation:
 
 ```bash
-npm run check
+npm run lint
 ```
 
-The GitHub Actions workflow runs the same source validation on pushes and pull requests.
+The same lint command is executed by GitHub Actions for pushes and pull requests targeting `master`.
 
 ## 🔧 Troubleshooting
 
 ### Pairing does not start
 
-Check that `OWNER`, `BOT_NUMBER`, `PAIRING_CODE`, and `SESSION_ID` exist in `.env`. Configuration is validated during startup.
+Check that `OWNER`, `BOT_NUMBER`, `PAIRING_CODE`, and `SESSION_ID` are present in `.env`. Configuration validation runs during startup.
 
 ### The bot does not respond
 
-Confirm that the command exactly matches a loaded plugin. Also check `ownerOnly` and self-mode state for the current chat.
+Confirm that the command exactly matches a loaded plugin. Also check whether the command is marked `ownerOnly` and whether self mode is active for the current chat.
 
 ### A plugin is not loaded
 
-Make sure the file is inside `src/plugins/`, ends in `.js`, exports a default plugin object, contains a non-empty `command` array, and defines `run` as a function.
+Verify that the file:
+
+- Is located inside `src/plugins/`
+- Ends with `.js`
+- Exports a default plugin object
+- Contains a non-empty `command` array
+- Defines `run` as a function
+
+Then check the console for a plugin loader warning or import error.
 
 ### A plugin command collides with another plugin
 
-The loader reports command collisions in the console. Give each command a unique owner unless intentionally overriding it.
+The loader reports command collisions in the console. Give commands unique names unless an intentional override is required.
 
 ### Database problems
 
@@ -286,30 +341,41 @@ Deleting `data/database.db` resets application data. Deleting `data/auth.db` res
 
 ### WhatsApp session was logged out
 
-A real logout or an external device removal invalidates the stored authentication state. Pair the bot again after the session has been removed.
+If the WhatsApp account is logged out or its session is invalidated externally, the stored authentication state may no longer be usable. Pair the account again after the authentication state has been removed.
 
-## ✅ Source Validation
+## 🔎 Linting & CI
 
-Run:
+Local validation:
 
 ```bash
-npm run check
+npm run lint
 ```
 
-This checks the syntax of JavaScript source files without starting the WhatsApp client or touching the runtime database.
+GitHub Actions runs the same ESLint command on pushes and pull requests to `master`. The workflow validates source code without starting the WhatsApp bot.
 
 ## 📦 Dependencies
 
-Core runtime dependencies include:
+Runtime dependencies include:
 
 - `zapo-js` — WhatsApp multi-device client
-- `@zapo-js/store-sqlite` — SQLite store for Zapo JS
-- `better-sqlite3` — SQLite driver
-- `dotenv` — Environment loading
+- `@zapo-js/store-sqlite` — SQLite-backed Zapo JS store
+- `better-sqlite3` — SQLite database driver
+- `dotenv` — Environment variable loading
 - `pino` / `pino-pretty` — Logging
 - `ws` — WebSocket implementation
 
-See [`package.json`](./package.json) for the current dependency declarations.
+Development tooling includes:
+
+- `eslint` — JavaScript linting
+- `@eslint/js` — ESLint's recommended JavaScript rules
+
+See [`package.json`](./package.json) for the current dependency declarations and scripts.
+
+## 📌 Notes
+
+This project is primarily a personal bot base. It intentionally prioritizes straightforward customization and owner-controlled tooling over multi-tenant architecture or large-scale production deployment.
+
+The `data/` directory contains runtime state and should remain outside version control.
 
 ## 📄 License
 
