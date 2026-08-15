@@ -16,7 +16,8 @@
     "multi-device"
   ],
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.js",
+    "check": "node scripts/check.mjs"
   },
   "dependencies": {
     "@zapo-js/store-sqlite": "latest",
