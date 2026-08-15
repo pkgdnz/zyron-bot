@@ -54,7 +54,7 @@ const normalizePlugin = (plugin, file) => {
     };
 };
 
-const registerPlugin = (map, plugin, file) => {
+const registerPlugin = (map, plugin) => {
     for (const command of plugin.command) {
         const previous = map.get(command);
 
@@ -89,7 +89,7 @@ async function loadPlugins() {
         const cached = pluginCache.get(file);
 
         if (cached?.mtimeMs === mtimeMs) {
-            registerPlugin(next, cached.plugin, file);
+            registerPlugin(next, cached.plugin);
             newCache.set(file, cached);
             continue;
         }
@@ -101,13 +101,13 @@ async function loadPlugins() {
             const mod = await import(url.href);
             const plugin = normalizePlugin(mod.default, file);
 
-            registerPlugin(next, plugin, file);
+            registerPlugin(next, plugin);
             newCache.set(file, { plugin, mtimeMs });
         } catch (err) {
             console.warn(`[plugins] failed to load ${file}:`, err.message);
 
             if (cached) {
-                registerPlugin(next, cached.plugin, file);
+                registerPlugin(next, cached.plugin);
                 newCache.set(file, cached);
             }
         }
