@@ -11,8 +11,6 @@ Bot WhatsApp multi-device berbasis Zapo JS dengan sistem plugin yang dapat dimua
   - `mem` — Tampilkan penggunaan memori
   - `menu` — Tampilkan daftar command dan kategori
   - `menu <kategori>` — Tampilkan command dalam kategori tertentu
-  - `resend` — Kirim ulang pesan yang di-quote (owner only)
-  - `resend -q` — Kirim ulang quoted message dari pesan yang di-reply (owner only)
   - `run` — Jalankan kode JavaScript async dari balasan teks atau dokumen `.js` (owner only)
   - `!` — Eksekusi kode JavaScript sinkron (owner only)
   - `!!` — Eksekusi kode JavaScript async (owner only)
@@ -40,7 +38,6 @@ zyron-bot/
 │   │   ├── ping.js
 │   │   ├── mem.js
 │   │   ├── menu.js
-│   │   ├── resend.js
 │   │   ├── run.js
 │   │   ├── eval.js
 │   │   ├── eval-async.js
@@ -132,8 +129,6 @@ export default plugin;
 | `ping` | core | Tidak | Cek latensi |
 | `mem` | core | Tidak | Penggunaan memori |
 | `menu` | core | Tidak | Daftar command |
-| `resend` | core | Ya | Kirim ulang pesan quoted |
-| `resend -q` | core | Ya | Kirim ulang quoted message dari pesan yang di-reply |
 | `run` | core | Ya | Eksekusi JS dari teks/dokumen |
 | `!` | core | Ya | Eval JS sinkron |
 | `!!` | core | Ya | Eval JS async |
