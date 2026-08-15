@@ -8,7 +8,7 @@ const run = async ({ m, q, text, sock, jid }) => {
 
     const target = q || m;
 
-    let code = null;
+    let code;
 
     if (q?.message && q.content) {
         if (q.content === 'documentMessage') {
