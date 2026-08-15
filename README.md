@@ -1,76 +1,25 @@
 # Zyron Bot
 
-Bot WhatsApp multi-device berbasis Zapo JS dengan sistem plugin yang dapat dimuat ulang secara otomatis (hot-reload).
+A lightweight WhatsApp multi-device bot built with [Zapo JS](https://github.com/zapoproject/zapo-js), featuring a file-based plugin system, automatic plugin hot-reloading, SQLite-backed storage, owner-only commands, and configurable self mode.
 
-## Fitur
+> This project is intended as a bot base that can be extended through plugins rather than as a fixed all-in-one bot.
 
-- Koneksi WhatsApp multi-device menggunakan pairing code
-- Sistem plugin dengan hot-reload (file plugin langsung terdeteksi saat diubah)
-- Command command bawaan:
-  - `ping` — Cek latensi bot
-  - `mem` — Tampilkan penggunaan memori
-  - `menu` — Tampilkan daftar command dan kategori
-  - `menu <kategori>` — Tampilkan command dalam kategori tertentu
-  - `run` — Jalankan kode JavaScript async dari balasan teks atau dokumen `.js` (owner only)
-  - `!` — Eksekusi kode JavaScript sinkron (owner only)
-  - `!!` — Eksekusi kode JavaScript async (owner only)
-  - `$` — Jalankan perintah shell di sistem (owner only)
-  - `self on/off` — Aktifkan/nonaktifkan self mode global (owner only)
-  - `self -gc on/off` — Aktifkan/nonaktifkan self mode per grup (owner only)
-  - `cms` — Hasilkan kode reproduksi untuk pesan yang di-quote
-  - `pay` — Kirim tombol permintaan pembayaran DANA
-- Penyimpanan data lokal SQLite (chats, contacts, messages, self settings)
-- Perlindungan owner untuk command sensitif
-- Self mode: bot merespon setiap pesan di chat/grup sebagai diri sendiri
+## Overview
 
-## Struktur Project
+Zyron Bot connects to WhatsApp using a pairing code and routes incoming messages to plugins from `src/plugins/`. Plugins are loaded automatically at startup and reloaded when their files change, so plugin development does not require restarting the process.
 
-```
-zyron-bot/
-├── main.js                  # Entry point, inisialisasi WaClient dan bind event
-├── handler.js               # Plugin loader, hot-reload, message handler
-├── config.js                # Konfigurasi environment, path, dan store
-├── package.json             # Dependensi dan script
-├── .env.example             # Template variabel lingkungan
-├── .gitignore               # File yang diabaikan Git
-├── src/
-│   ├── plugins/             # Plugin bawaan dan ekstensi
-│   │   ├── ping.js
-│   │   ├── mem.js
-│   │   ├── menu.js
-│   │   ├── run.js
-│   │   ├── eval.js
-│   │   ├── eval-async.js
-│   │   ├── shell.js
-│   │   ├── self.js
-│   │   ├── cms.js
-│   │   └── pay.js
-│   ├── database/
-│   │   ├── database.js      # Inisialisasi SQLite dan schema
-│   │   └── table.js         # Prepared statements
-│   ├── serialize/
-│   │   ├── serialize.js     # Serialisasi pesan, chat, kontak
-│   │   ├── message.js       # Serialisasi/deserialisasi pesan ke BLOB
-│   │   ├── chat.js          # Serialisasi chat
-│   │   └── contact.js       # Serialisasi kontak
-│   ├── chats-store.js       # In-memory store untuk chat
-│   ├── contacts-store.js    # In-memory store untuk kontak
-│   ├── messages-store.js    # In-memory store untuk pesan
-│   ├── group-store.js       # In-memory store untuk grup
-│   ├── self-store.js        # In-memory store untuk self mode
-│   ├── owner.js             # Validasi owner
-│   └── message-resolve.js   # Resolve pesan dari store
-└── data/                    # Runtime database (tidak di-commit)
-```
+The project keeps WhatsApp authentication state and application data in separate SQLite databases. Message, chat, contact, group, and self-mode state is handled by the project's local stores.
 
-## Persyaratan
+## Requirements
 
-- Node.js >= 20.9.0
-- npm (atau package manager kompatibel)
-- SQLite (disediakan melalui `better-sqlite3`)
-- Koneksi internet untuk WhatsApp multi-device
+- Node.js `>= 20.9.0`
+- npm or a compatible package manager
+- An internet connection for WhatsApp connectivity
+- A WhatsApp account for the bot
 
-## Instalasi
+SQLite is provided through `better-sqlite3` and `@zapo-js/store-sqlite`; no separate SQLite server is required.
+
+## Installation
 
 ```bash
 git clone https://github.com/pkgdnz/zyron-bot.git
@@ -78,113 +27,269 @@ cd zyron-bot
 npm install
 ```
 
-## Konfigurasi
+Create your environment file:
 
-Buat file `.env` berdasarkan `.env.example`:
+```bash
+cp .env.example .env
+```
 
-| Variabel | Deskripsi | Contoh |
-|----------|-----------|--------|
-| `OWNER` | Nomor WhatsApp owner (tanpa +, tanpa leading 0) | `6283187820160` |
-| `BOT_NUMBER` | Nomor WhatsApp bot (tanpa +, tanpa leading 0) | `6283851010908` |
-| `PAIRING_CODE` | Kode pairing untuk multi-device | `PKGDNZLF` |
-| `SESSION_ID` | ID sesi autentikasi | `default` |
-| `PAYMENT_KEY` | Nomor rekening DANA untuk tombol pembayaran | `083187820160` |
-| `PAYMENT_INSTITUTION` | Nama institusi pembayaran | `DANA` |
-| `PAYMENT_FULL_NAME` | Nama lengkap pemilik akun pembayaran | `NORXXX` |
+Then edit `.env` with your own values.
 
-## Menjalankan Bot
+## Configuration
+
+Zyron Bot requires the following environment variables:
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `OWNER` | Yes | Owner's WhatsApp number, using the international format without `+`. |
+| `BOT_NUMBER` | Yes | WhatsApp number that will be paired with the bot. |
+| `PAIRING_CODE` | Yes | Custom pairing code requested during authentication. |
+| `SESSION_ID` | Yes | Zapo JS session identifier. |
+| `PAYMENT_KEY` | No | Payment account key used by the payment plugin. |
+| `PAYMENT_INSTITUTION` | No | Payment provider name used by the payment plugin. |
+| `PAYMENT_FULL_NAME` | No | Full account name used by the payment plugin. |
+
+Example:
+
+```env
+OWNER=628123456789
+BOT_NUMBER=628987654321
+PAIRING_CODE=ZYRONBOT
+SESSION_ID=default
+PAYMENT_KEY=
+PAYMENT_INSTITUTION=DANA
+PAYMENT_FULL_NAME=
+```
+
+Do not commit your real `.env` file or authentication database to a public repository.
+
+## Running the Bot
+
+Start Zyron Bot with:
 
 ```bash
 npm start
 ```
 
-Bot akan meminta pairing code ke nomor `BOT_NUMBER`. Setelah berhasil pairing, bot siap menerima dan merespon pesan.
+The process connects using the configured `BOT_NUMBER` and requests a WhatsApp pairing code. After the account is paired, the bot starts processing incoming messages.
 
-## Sistem Plugin
+The application also handles `SIGINT` and `SIGTERM` for shutdown cleanup.
 
-Plugin dimuat dari direktori `src/plugins/`. Setiap plugin adalah file `.js` yang mengekspor default object dengan struktur:
+## Commands
+
+The built-in commands are organized through plugin categories and the menu system.
+
+| Command | Owner only | Description |
+| --- | --- | --- |
+| `ping` | No | Check bot latency. |
+| `mem` | No | Show process memory usage. |
+| `menu` | No | Show available commands and categories. |
+| `menu <category>` | No | Show commands in a specific category. |
+| `run` | Yes | Execute asynchronous JavaScript from a replied text message or `.js` document. |
+| `!` | Yes | Execute synchronous JavaScript. |
+| `!!` | Yes | Execute asynchronous JavaScript. |
+| `$` | Yes | Execute a shell command. |
+| `self` | Yes | Toggle global self mode. |
+| `self -gc on/off` | Yes | Toggle self mode for the current group. |
+| `cms` | No | Generate reproduction code for a quoted message. |
+| `pay` | No | Send the configured payment request button. |
+
+### Owner-only behavior
+
+Commands marked as owner-only are ignored for non-owner users. The message handler performs the owner check before executing the plugin.
+
+Self mode is also enforced by the message handler: when self mode is enabled for a chat, non-owner messages are ignored while owner commands remain available.
+
+## Plugin System
+
+Plugins live in:
+
+```text
+src/plugins/
+```
+
+Every `.js` file in that directory can be loaded as a plugin. A plugin must export a default object containing at least `command` and `run`:
 
 ```js
 const plugin = {
-    run: async (ctx) => { /* ... */ },
-    command: ['cmd'],
-    name: 'nama-plugin',
-    description: 'Deskripsi singkat.',
-    category: ['core'],
-    ownerOnly: false
+  command: ['example'],
+  name: 'example',
+  description: 'Example plugin.',
+  category: ['example'],
+  ownerOnly: false,
+
+  async run(ctx) {
+    const { sock, jid, m, q, text } = ctx;
+
+    // Plugin logic
+  },
 };
 
 export default plugin;
 ```
 
-- **Hot-reload**: Perubahan file plugin akan otomatis dimuat ulang tanpa restart bot.
-- **Command**: Array string yang memicu plugin.
-- **Category**: Digunakan untuk grouping di menu.
-- **ownerOnly**: Jika `true`, plugin hanya bisa dijalankan oleh owner.
+### Plugin fields
 
-## Command
+| Field | Purpose |
+| --- | --- |
+| `command` | Array of command strings that trigger the plugin. |
+| `name` | Internal plugin name used for logging. |
+| `description` | Human-readable command description. |
+| `category` | Category or categories used by the menu system. |
+| `ownerOnly` | Restricts execution to the configured owner when set to `true`. |
+| `run(ctx)` | Function that receives the execution context. |
 
-| Command | Kategori | Owner Only | Deskripsi |
-|---------|----------|------------|-----------|
-| `ping` | core | Tidak | Cek latensi |
-| `mem` | core | Tidak | Penggunaan memori |
-| `menu` | core | Tidak | Daftar command |
-| `run` | core | Ya | Eksekusi JS dari teks/dokumen |
-| `!` | core | Ya | Eval JS sinkron |
-| `!!` | core | Ya | Eval JS async |
-| `$` | core | Ya | Jalankan shell |
-| `self` | core | Ya | Toggle self mode |
-| `cms` | core | Tidak | Generate kode reproduksi pesan |
-| `pay` | core | Tidak | Tombol pembayaran DANA |
+The handler provides these commonly used context values:
 
-## Database
-
-Project menggunakan SQLite dengan dua database:
-
-- **`data/auth.db`** — Disimpan dan dikelola oleh `zapo-js` untuk state autentikasi multi-device, kunci sinyal, sesi, identity, sender key, app state, dan privacy token (tidak di-commit).
-- **`data/database.db`** — Database aplikasi yang menyimpan:
-  - `contacts` — Kontak (lid, pn, push_name)
-  - `chats` — Chat/grup (jid, name)
-  - `messages` — Pesan yang diserialisasi (remote_jid, key_id, timestamp, raw)
-  - `self_settings` — Konfigurasi self mode global
-  - `self_groups` — Override self mode per grup
-
-Catatan: domain `messages`, `threads`, dan `contacts` dari `zapo-js` dinonaktifkan (`none`), sehingga data tersebut tidak diarsipkan oleh library. Database diinisialisasi otomatis saat startup. Struktur tabel dibuat dengan `CREATE TABLE IF NOT EXISTS`. Jika terdeteksi tabel `messages` legacy tanpa kolom `remote_jid`, data akan dimigrasikan secara otomatis ke schema baru (ditangani di `src/database/database.js`).
-
-## Arsitektur
-
+```js
+{
+  sock,  // WhatsApp client
+  jid,   // current chat JID
+  m,     // serialized message
+  q,     // quoted message, if available
+  text   // command arguments as a string
+}
 ```
+
+## Hot Reloading
+
+Plugin changes are detected automatically with `fs.watch`.
+
+When a plugin file is created, modified, removed, or replaced, Zyron Bot reloads the plugin registry without restarting the process. If a modified plugin fails to load, the previous cached version can remain active.
+
+Core files such as `main.js`, `handler.js`, `config.js`, and database modules still require a process restart when changed.
+
+## Project Structure
+
+```text
+zyron-bot/
+├── main.js                    # Application entry point and WhatsApp event wiring
+├── handler.js                 # Plugin loading, hot reload, and command routing
+├── config.js                  # Environment validation and storage configuration
+├── package.json               # Project metadata, scripts, and dependencies
+├── .env.example               # Environment variable template
+├── src/
+│   ├── plugins/               # Built-in and custom plugins
+│   ├── database/
+│   │   ├── database.js        # SQLite initialization and schema
+│   │   └── table.js            # Database statements/helpers
+│   ├── serialize/             # Message, chat, and contact serialization
+│   ├── chats-store.js         # In-memory chat store
+│   ├── contacts-store.js      # In-memory contact store
+│   ├── messages-store.js      # In-memory message store
+│   ├── group-store.js         # Group state and events
+│   ├── self-store.js          # Global/group self-mode state
+│   ├── owner.js               # Owner validation
+│   └── message-resolve.js     # Message resolution helpers
+└── data/                      # Runtime SQLite data
+```
+
+## Runtime Data
+
+The `data/` directory contains local runtime state and should not be committed.
+
+### `data/auth.db`
+
+Stores WhatsApp authentication/session state used by Zapo JS, including authentication credentials, signal state, sessions, identities, sender keys, app state, and privacy tokens.
+
+### `data/database.db`
+
+Stores application-level data managed by Zyron Bot, including:
+
+- `contacts` — serialized contact information
+- `chats` — chat and group metadata
+- `messages` — serialized message records
+- `self_settings` — global self-mode configuration
+- `self_groups` — per-group self-mode overrides
+
+The application initializes the database automatically and uses `CREATE TABLE IF NOT EXISTS` for its schema. Legacy `messages` data can be migrated when an older schema is detected.
+
+## Architecture
+
+The runtime flow is intentionally simple:
+
+```text
 main.js
-  ├── config.js (env, path, store SQLite untuk auth)
-  ├── WaClient (zapo-js)
-  │   ├── Event: auth_qr / auth_paired
-  │   ├── Event: connection (open / reconnect / logout)
-  │   ├── Event: message → messageStore, contactStore, handleMessage
-  │   └── Event: group → groupStore
-  └── handler.js
-       ├── loadPlugins() — muat plugin dari src/plugins/
-       ├── watchPlugins() — hot-reload via fs.watch
-       └── handleMessage() — route pesan ke plugin sesuai command
+│
+├── config.js
+│   └── Environment + SQLite store configuration
+│
+├── WaClient (zapo-js)
+│   ├── Authentication events
+│   ├── Connection events
+│   ├── Message events
+│   └── Group events
+│
+├── Local stores
+│   ├── chats-store
+│   ├── contacts-store
+│   ├── messages-store
+│   └── group-store
+│
+└── handler.js
+    ├── loadPlugins()
+    ├── watchPlugins()
+    └── handleMessage()
+        ├── Resolve command
+        ├── Check ownerOnly
+        ├── Check self mode
+        └── Run plugin
 ```
 
-## Pengembangan
+This separation keeps WhatsApp connection handling, message routing, storage, and plugin logic independent from one another.
 
-Tidak ada mode development khusus. Perubahan pada plugin akan hot-reload otomatis. Untuk perubahan pada core module, restart bot dengan `npm start`.
+## Development
 
-Bot menangani `SIGINT` dan `SIGTERM` untuk cleanup store sebelum exit.
+For plugin development, edit files directly inside `src/plugins/`. Changes are detected automatically.
+
+For core changes, restart the process:
+
+```bash
+npm start
+```
+
+A plugin that does not export a valid `command` array or `run` function is skipped. Plugin loading errors are logged without terminating the entire bot process.
 
 ## Troubleshooting
 
-- **Bot tidak terhubung**: Pastikan `BOT_NUMBER` dan `PAIRING_CODE` valid, dan bot dapat mengakses WhatsApp server.
-- **Plugin tidak loaded**: Pastikan file plugin berada di `src/plugins/`, berekstensi `.js`, dan memiliki `command` serta `run`.
-- **Database error**: Hapus file `data/database.db` dan `data/auth.db` untuk reset (akan membuat ulang saat startup). Tabel legacy `messages` akan dimigrasikan secara otomatis jika terdeteksi schema lama.
-- **Eval tidak bekerja**: Pastikan JavaScript syntax valid dan tidak ReferenceError.
-- **Pembayaran tidak muncul**: Pastikan `PAYMENT_KEY`, `PAYMENT_INSTITUTION`, dan `PAYMENT_FULL_NAME` diisi di `.env`.
+### Pairing does not start
 
-## Lisensi
+Check that `BOT_NUMBER`, `PAIRING_CODE`, `SESSION_ID`, and `OWNER` are present in `.env`. The configuration module validates these variables during startup.
 
-MIT
+### The bot does not respond
+
+Make sure the command exactly matches a loaded plugin command. Also check whether the command is owner-only or whether self mode is enabled for the current chat.
+
+### A plugin is not loaded
+
+Verify that the file is inside `src/plugins/`, ends with `.js`, exports a default plugin object, contains a non-empty `command` array, and defines `run` as a function.
+
+### Database problems
+
+Stop the bot before removing runtime databases. Deleting `data/database.db` resets application data; deleting `data/auth.db` resets WhatsApp authentication state and requires pairing again.
+
+### Payment command is missing configuration
+
+Set `PAYMENT_KEY`, `PAYMENT_INSTITUTION`, and `PAYMENT_FULL_NAME` when using the payment plugin.
+
+## Dependencies
+
+The main runtime packages include:
+
+- `zapo-js` — WhatsApp multi-device client
+- `@zapo-js/store-sqlite` — SQLite-backed Zapo JS store
+- `better-sqlite3` — SQLite database driver
+- `dotenv` — environment variable loading
+- `pino` / `pino-pretty` — logging
+- `qrcode-terminal` — terminal QR support
+- `ws` — WebSocket implementation
+
+See [`package.json`](./package.json) for the exact dependency declarations and project metadata.
+
+## License
+
+This project is released under the [MIT License](./LICENSE).
 
 ## Repository
 
-https://github.com/pkgdnz/zyron-bot
+[github.com/pkgdnz/zyron-bot](https://github.com/pkgdnz/zyron-bot)
