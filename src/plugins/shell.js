@@ -13,7 +13,8 @@ const run = async ({ m, text, sock, jid }) => {
 
    try {
       const { stdout, stderr } = await sh(text, {
-         windowsHide: true
+         windowsHide: true,
+         timeout: 30000
       });
 
       const output = (stdout || stderr || 'Done.').trim();

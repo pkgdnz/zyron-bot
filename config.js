@@ -7,6 +7,21 @@ import { createSqliteStore } from "@zapo-js/store-sqlite";
 
 config();
 
+const requiredEnv = Object.freeze([
+  "OWNER",
+  "BOT_NUMBER",
+  "PAIRING_CODE",
+  "SESSION_ID",
+]);
+
+const missing = requiredEnv.filter(key => !process.env[key]);
+
+if (missing.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missing.join(", ")}`
+  );
+}
+
 const res = (...paths) => path.resolve(import.meta.dirname, ...paths);
 
 const pathConfig = Object.freeze({

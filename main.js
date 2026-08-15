@@ -30,23 +30,6 @@ await fs.mkdir(path.dirname(cfg.path.authState), {
 });
 
 function bindStoreEvents(sock) {
-  sock.on("history_sync_chunk", async () => {
-    try {
-      const threads = await cfg.store.session(cfg.sessionId).threads.list();
-
-      for (const thread of threads) {
-        chatStore.upsertAndGet(
-          serializeChat({
-            id: thread.jid,
-            name: thread.name,
-          }),
-        );
-      }
-    } catch (err) {
-      console.error("[bot] history sync:", err);
-    }
-  });
-
   sock.on("message", event => {
     messageStore.insert(event);
 

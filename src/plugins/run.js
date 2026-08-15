@@ -49,7 +49,7 @@ const run = async ({ m, q, text, sock, jid }) => {
     }
 
     try {
-        let result = await eval(`(async () => { ${code} })()`);
+        let result = await eval("(async () => { " + code + " })()");
 
         if (typeof result !== 'string') {
             result = util.inspect(result);

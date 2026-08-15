@@ -1,8 +1,5 @@
 import util from 'node:util';
-import { createRequire } from 'node:module';
 import { isOwner } from '../owner.js';
-
-const require = createRequire(import.meta.url);
 
 const run = async ({ m, q, text, sock, jid }) => {
    if (!isOwner(m)) return;
@@ -10,7 +7,7 @@ const run = async ({ m, q, text, sock, jid }) => {
    const target = q || m;
 
    try {
-      let result = await eval(`(async () => { ${text} })()`);
+      let result = await eval("(async () => { " + text + " })()");
 
       if (typeof result !== 'string') {
          result = util.inspect(result);
