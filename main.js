@@ -15,7 +15,6 @@ import { bindGroupEvents, fetchAllGroups } from "./src/group-store.js";
 
 import { handleMessage } from "./handler.js";
 
-import { serializeChat } from "./src/serialize/chat.js";
 import {
   serializeContactFromMessage,
   serializeSelfContact,
