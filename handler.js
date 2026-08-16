@@ -5,9 +5,9 @@ import { pathToFileURL } from 'node:url';
 
 import cfg from './config.js';
 import { plugins } from './src/plugin-registry.js';
-import { messageSerialize } from './src/serialize/serialize.js';
+import { messageSerialize } from './src/serialize.js';
 import { isOwner } from './src/owner.js';
-import { isSelfMode } from './src/self-store.js';
+import { isSelfMode } from './src/store.js';
 
 const pluginCache = new Map();
 
