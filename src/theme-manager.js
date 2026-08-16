@@ -1,4 +1,4 @@
-import stmt from './db.js';
+import { stmt } from './db.js';
 import { JPEG_THUMB } from './helpers.js';
 import { deserializeMessage, serializeMessage } from './serialize.js';
 
