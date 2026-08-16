@@ -81,8 +81,7 @@ A normal `SIGINT` or `SIGTERM` shutdown cleans up the local runtime without inte
 | `mem` | No | Show current process memory usage. |
 | `menu` | No | Greet the sender and list available command categories. |
 | `menu <category>` | No | Show commands inside a specific category. |
-| `menu all` | No | Show every command grouped by category. |
-| `run` | Yes | Execute asynchronous JavaScript from command text or a replied text/`.js` document. |
+| `menu all` | No | Show every command grouped by category. || `run` | Yes | Execute asynchronous JavaScript from command text or a replied text/`.js` document. |
 | `!` | Yes | Execute JavaScript synchronously. |
 | `!!` | Yes | Execute JavaScript asynchronously. |
 | `$` | Yes | Execute a shell command. |
@@ -227,7 +226,7 @@ theme preview               Work in progress
 
 Thumbnail and favicon inputs accept an image url, a reply to an image/thumbnail/document-with-image, or a directly uploaded image. Uploaded media is encrypted as a WhatsApp `thumbnail-link`, so it can be re-downloaded and re-sent on demand.
 
-The `menu` command greets the sender, lists categories (or commands with `menu <category>` / `menu all`), and renders its link preview from the active theme: it uses the theme title, description, and url (falling back to the bot name/description and the `wa.me` url when unset), and includes the configured thumbnail and favicon when available.
+The `menu` command greets the sender (e.g. `hai Andi! berikut kategori yang tersedia`), lists the available categories, and renders its link preview from the active theme: it uses the theme title, description, and url (falling back to the bot name/description and the `wa.me` url when unset), and includes the configured thumbnail and favicon when available. `menu <category>` and `menu all` show the commands of a category or all categories.
 
 ## 🗄️ Database
 

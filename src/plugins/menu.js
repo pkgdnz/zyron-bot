@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { getFirstStringAndRest, getOneRandomElemenFrom } from '../helper/common.js';
 import { plugins } from '../plugin-registry.js';
 import { themeManager } from '../theme-manager.js';
 
@@ -12,10 +13,10 @@ const BOT_NAME = pkg.name || 'zyron-bot';
 const BOT_DESC = pkg.description || 'WhatsApp Bot';
 const MENU_URL = 'https://wa.me/6283851010908';
 
-const FOOTER = [
-    '> Use menu <category> to view sub-menu.',
-    '> Use menu all to view all menu.'
-].join('\n');
+const buatKataKata = (displayPrefix, randomCommand, content) => `${content ?? ''}
+
+> gunakan command -h untuk melihat help.
+> contoh: ${displayPrefix ?? ''}${randomCommand ?? ''} -h`;
 
 const normalizePlugins = source => {
     const seen = new Set();
@@ -92,114 +93,86 @@ const formatCommandLines = list => {
     return lines;
 };
 
-const formatCategories = (categories, link, greeting) => [
-    link,
-    '',
-    greeting,
-    '',
-    'Menu List:',
-    '',
-    ...categories.map(category => `* ${category}`),
-    '',
-    FOOTER
-].join('\n');
+const formatCategoryText = categories =>
+    categories.map(category => `* ${category}`).join('\n');
 
-const formatCategory = (category, list, link, greeting) => [
-    link,
-    '',
-    greeting,
-    '',
-    `*Menu ${category}:*`,
-    '',
-    ...formatCommandLines(list),
-    '',
-    FOOTER
-].join('\n');
-
-const formatAll = (groups, link, greeting) => {
+const formatAllMenu = groups => {
     const sections = [];
 
     for (const [category, list] of groups) {
-        sections.push(`*${category}:*`);
+        sections.push(`* ${category}`);
         sections.push(...formatCommandLines(list));
         sections.push('');
     }
 
-    return [
-        link,
-        '',
-        greeting,
-        '',
-        '*Menu All:*',
-        '',
-        ...sections,
-        FOOTER
-    ].join('\n');
+    return sections.join('\n').trimEnd();
 };
 
-const formatNotFound = (query, categories, link, greeting) => [
-    link,
-    '',
-    greeting,
-    '',
-    `*Menu ${query}:* category not found.`,
-    '',
-    'Available categories:',
-    '',
-    ...categories.map(category => `* ${category}`),
-    '',
-    FOOTER
+const formatCategoryMenu = (category, list) => [
+    `* ${category}`,
+    ...formatCommandLines(list)
 ].join('\n');
 
-const run = async ({ sock, jid, m, text }) => {
+async function run(ctx) {
+    const { sock, jid, m, text } = ctx;
+
+    const { firstString, restString } = getFirstStringAndRest(text);
     const groups = groupByCategory(normalizePlugins([...plugins.values()]));
     const categories = [...groups.keys()].sort();
-    const query = (text ?? '').trim().toLowerCase();
 
-    const senderJid = m.key?.participant ?? m.key?.remoteJid;
-    const senderNumber = (senderJid ?? '').split('@')[0];
-    const greeting = senderNumber ? `Hello @${senderNumber}` : 'Hello';
+    if (!text) {
+        const senderName = m.contact?.pushName || 'kamu';
 
-    const { url } = themeManager.getData();
-    const link = url ?? MENU_URL;
+        const header = `hai ${senderName}! berikut kategori yang tersedia\n\n`;
+        const body = `${formatCategoryText(categories)}\n\n`;
+        const footer = '> gunakan menu <category> untuk liat isi menu';
+        const content = header + body + footer;
 
-    let body;
+        const { url } = themeManager.getData();
+        const link = url ?? MENU_URL;
 
-    if (query === 'all') {
-        body = categories.length > 0
-            ? formatAll(groups, link, greeting)
-            : '⚠️ No plugins are currently registered.';
-    } else if (!query) {
-        body = categories.length > 0
-            ? formatCategories(categories, link, greeting)
-            : '⚠️ No plugins are currently registered.';
-    } else {
-        const list = groups.get(query);
-        body = list
-            ? formatCategory(query, list, link, greeting)
-            : formatNotFound(query, categories, link, greeting);
+        const message = themeManager.buildLinkPreview(`${link}\n${content}`, {
+            title: BOT_NAME,
+            description: BOT_DESC,
+            url: link
+        });
+
+        try {
+            await sock.message.send(jid, message);
+        } catch (err) {
+            console.error('[menu]', err);
+            return m.reply(`Failed to send menu: ${err?.message ?? err}`);
+        }
+
+        return;
     }
 
-    const content = themeManager.buildLinkPreview(body, {
-        title: BOT_NAME,
-        description: BOT_DESC,
-        url: MENU_URL
-    });
+    if (firstString === 'all' && !restString) {
+        const randomCategory = getOneRandomElemenFrom(categories);
+        const list = groups.get(randomCategory) ?? [];
+        const randomPlugin = getOneRandomElemenFrom(list);
+        const randomCommand = randomPlugin?.command?.[0];
 
-    try {
-        const options = senderJid ? { mentions: [senderJid] } : undefined;
-        await sock.message.send(jid, content, options);
-    } catch (err) {
-        console.error('[menu]', err);
-        return m.reply(`Failed to send menu: ${err?.message ?? err}`);
+        await sock.message.send(jid, buatKataKata('', randomCommand, formatAllMenu(groups)));
+        return;
     }
-};
+
+    const userCategory = text.trim();
+    const list = groups.get(userCategory);
+
+    if (!list) return m.reply(`tidak ada kategori *${text}*`);
+
+    const randomPlugin = getOneRandomElemenFrom(list);
+    const randomCommand = randomPlugin?.command?.[0];
+
+    await sock.message.send(jid, buatKataKata('', randomCommand, formatCategoryMenu(userCategory, list)));
+}
 
 const plugin = {
     run,
     name: 'menu',
     command: ['menu'],
-    description: 'Show available categories and commands.',
+    description: 'Menampilkan menu.',
     category: ['core']
 };
 

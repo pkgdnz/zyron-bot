@@ -13,6 +13,11 @@ export function getFirstStringAndRest(text) {
     };
 }
 
+export function getOneRandomElemenFrom(array) {
+    if (!Array.isArray(array) || array.length === 0) return undefined;
+    return array[Math.floor(Math.random() * array.length)];
+}
+
 export async function streamToBuffer(stream) {
     const chunks = [];
     for await (const chunk of stream) {
