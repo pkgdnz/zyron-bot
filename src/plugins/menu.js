@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import cfg from '../../config.js';
 import { plugins } from '../plugin-registry.js';
+import { themeManager } from '../theme-manager.js';
 
 const pkg = JSON.parse(
     readFileSync(resolve(import.meta.dirname, '../../package.json'), 'utf8')
@@ -79,7 +80,10 @@ const groupByCategory = pluginList => {
     return groups;
 };
 
-const formatHeader = () => `${BOT_URL}\n${BOT_NAME} - ${BOT_DESC}`;
+const formatHeader = () => {
+    const { title, description, url } = themeManager.getData();
+    return `${url ?? BOT_URL}\n${title ?? BOT_NAME} - ${description ?? BOT_DESC}`;
+};
 
 const formatCategories = categories => [
     formatHeader(),
@@ -124,18 +128,6 @@ const formatNotFound = (query, categories) => [
     FOOTER
 ].join('\n');
 
-const buildMenuMessage = text => ({
-    extendedTextMessage: {
-        endCardTiles: [],
-        text,
-        matchedText: BOT_URL,
-        description: BOT_DESC,
-        title: BOT_NAME,
-        previewType: 0,
-        inviteLinkGroupTypeV2: 0
-    }
-});
-
 const run = async ({ sock, jid, m, text }) => {
     const groups = groupByCategory(normalizePlugins([...plugins.values()]));
     const categories = [...groups.keys()].sort();
@@ -154,8 +146,14 @@ const run = async ({ sock, jid, m, text }) => {
             : formatNotFound(query, categories);
     }
 
+    const content = themeManager.buildLinkPreview(body, {
+        title: BOT_NAME,
+        description: BOT_DESC,
+        url: BOT_URL
+    });
+
     try {
-        await sock.message.send(jid, buildMenuMessage(body));
+        await sock.message.send(jid, content);
     } catch (err) {
         console.error('[menu]', err);
         return m.reply(`Failed to send menu: ${err?.message ?? err}`);

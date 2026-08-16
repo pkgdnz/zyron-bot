@@ -58,6 +58,23 @@ class ThemeManager {
         };
     }
 
+    buildLinkPreview(bodyText, fallback = {}) {
+        const { title, description, url, message } = this.getData();
+        const etm = message?.extendedTextMessage ?? {};
+
+        return {
+            extendedTextMessage: {
+                ...etm,
+                title: title ?? fallback.title,
+                description: description ?? fallback.description,
+                text: bodyText,
+                matchedText: url ?? fallback.url,
+                previewType: 0,
+                inviteLinkGroupTypeV2: 0
+            }
+        };
+    }
+
     exportData() {
         return {
             title: this.#title,

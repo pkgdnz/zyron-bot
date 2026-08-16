@@ -188,6 +188,65 @@ describe('theme manager', () => {
             .toBeInstanceOf(Uint8Array);
     });
 
+    it('builds a link preview from the theme values', async () => {
+        const { themeManager } = await import('../src/theme-manager.js');
+
+        themeManager.setTitle('Judul');
+        themeManager.setDescription('Deskripsi');
+        themeManager.setUrl('https://example.com/');
+
+        const preview = themeManager.buildLinkPreview('halo dunia', {
+            title: 'fallback',
+            description: 'fallback desc',
+            url: 'https://fallback.example'
+        });
+
+        expect(preview).toEqual({
+            extendedTextMessage: {
+                title: 'Judul',
+                description: 'Deskripsi',
+                text: 'halo dunia',
+                matchedText: 'https://example.com/',
+                previewType: 0,
+                inviteLinkGroupTypeV2: 0
+            }
+        });
+    });
+
+    it('includes the stored thumbnail fields in the link preview', async () => {
+        const { themeManager } = await import('../src/theme-manager.js');
+
+        themeManager.setMessage(wamc);
+
+        const etm = themeManager.buildLinkPreview('isi pesan').extendedTextMessage;
+
+        expect(etm.mediaKey).toEqual(wamc.extendedTextMessage.mediaKey);
+        expect(etm.thumbnailDirectPath).toBe('/mms/thumbnail-link/abc');
+        expect(etm.thumbnailWidth).toBe(400);
+        expect(etm.text).toBe('isi pesan');
+        expect(etm.title).toBeUndefined();
+    });
+
+    it('falls back to defaults when the theme is empty', async () => {
+        const { themeManager } = await import('../src/theme-manager.js');
+
+        const preview = themeManager.buildLinkPreview('isi', {
+            title: 'Nama',
+            description: 'Desc',
+            url: 'https://fallback.example'
+        });
+
+        expect(preview.extendedTextMessage).toEqual({
+            title: 'Nama',
+            description: 'Desc',
+            text: 'isi',
+            matchedText: 'https://fallback.example',
+            previewType: 0,
+            inviteLinkGroupTypeV2: 0
+        });
+    });
+
+
     it('rejects malformed external json', async () => {
         const { themeManager } = await import('../src/theme-manager.js');
 

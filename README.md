@@ -226,6 +226,8 @@ theme preview               Work in progress
 
 Thumbnail and favicon inputs accept an image url, a reply to an image/thumbnail/document-with-image, or a directly uploaded image. Uploaded media is encrypted as a WhatsApp `thumbnail-link`, so it can be re-downloaded and re-sent on demand.
 
+The `menu` command renders its link preview from the active theme: it uses the theme title, description, and url (falling back to the bot name/description and `wa.me` url when unset), and includes the configured thumbnail and favicon when available.
+
 ## 🗄️ Database
 
 Zyron Bot uses two separate SQLite databases.
