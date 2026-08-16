@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { resolveMessageContent } from '../message-resolve.js';
 
-const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_]*$/;
+const IDENT_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 const indent = (str, spaces) => {
     const pad = ' '.repeat(spaces);
