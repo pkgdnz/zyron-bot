@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
 import { resolveEvent, enrichChain, resolveMessageContent } from '../src/message-resolve.js';
-import { messageStore } from '../src/messages-store.js';
+import { messageStore } from '../src/store.js';
 
 const mockMessageStore = (records) => {
     const map = new Map(records.map(r => [r.id, { ...r, raw: r.raw }]));

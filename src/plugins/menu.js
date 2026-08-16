@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { getFirstStringAndRest, getOneRandomElemenFrom } from '../helper/common.js';
+import { getFirstStringAndRest, getOneRandomElemenFrom } from '../helpers.js';
 import { plugins } from '../plugin-registry.js';
 import { themeManager } from '../theme-manager.js';
 

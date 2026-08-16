@@ -1,6 +1,81 @@
-import { getContentType, unwrapMessage } from 'zapo-js';
+import { getContentType, unwrapMessage, toUserJid } from 'zapo-js';
 
-import { resolveJidPair } from '../helper/common.js';
+import { resolveJidPair } from './helpers.js';
+
+export function serializeMessage(message) {
+    return Buffer.from(
+        JSON.stringify(message, (key, value) => {
+            if (value instanceof Uint8Array) {
+                return {
+                    __bytes: Buffer.from(value).toString('base64')
+                };
+            }
+
+            return value;
+        })
+    );
+}
+
+export function deserializeMessage(raw) {
+    return JSON.parse(raw.toString(), (key, value) => {
+        if (
+            value &&
+            typeof value === 'object' &&
+            typeof value.__bytes === 'string'
+        ) {
+            return new Uint8Array(
+                Buffer.from(value.__bytes, 'base64')
+            );
+        }
+
+        return value;
+    });
+}
+
+export function serializeChat(chat) {
+    if (!chat?.id?.endsWith('@g.us')) return undefined;
+
+    return {
+        jid: chat.id,
+        name: chat.name ?? chat.subject ?? null
+    };
+}
+
+export function serializeContactFromMessage(event) {
+    const { key, pushName, timestampSeconds } = event ?? {};
+
+    if (!key) return undefined;
+
+    const { lid, pn } = key.isGroup
+        ? resolveJidPair(key.participant, key.participantAlt)
+        : resolveJidPair(key.remoteJid, key.remoteJidAlt);
+
+    if (!lid && !pn) return undefined;
+
+    return {
+        lid,
+        pn,
+        pushName: pushName ?? null,
+        updatedAt: timestampSeconds ?? null
+    };
+}
+
+export function serializeSelfContact(sock) {
+    const creds = sock?.getCredentials?.() ?? null;
+
+    if (!creds) return undefined;
+
+    const lid = creds.meLid ? toUserJid(creds.meLid) : null;
+    const pn = creds.meJid ? toUserJid(creds.meJid) : null;
+
+    if (!lid && !pn) return undefined;
+
+    return {
+        lid,
+        pn,
+        pushName: creds.meDisplayName ?? creds.pushName ?? null
+    };
+}
 
 function reply(text) {
     return this.sock.message.send(

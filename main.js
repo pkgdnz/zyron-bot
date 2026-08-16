@@ -6,9 +6,7 @@ import { WebSocket } from 'ws';
 
 import cfg from './config.js';
 
-import { contactStore } from './src/contacts-store.js';
-import { messageStore } from './src/messages-store.js';
-import { bindGroupEvents, fetchAllGroups } from './src/group-store.js';
+import { contactStore, messageStore, bindGroupEvents, fetchAllGroups } from './src/store.js';
 import { handleMessage } from './handler.js';
 import {
     serializeContactFromMessage,

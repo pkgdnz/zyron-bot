@@ -1,6 +1,6 @@
 import { getContentType, unwrapMessage } from 'zapo-js';
 
-import { messageStore } from './messages-store.js';
+import { messageStore } from './store.js';
 
 export const resolveEvent = (remoteJid, keyId) => {
     if (!keyId) return null;

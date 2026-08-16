@@ -1,5 +1,5 @@
 import { isOwner } from '../owner.js';
-import { selfStore } from '../self-store.js';
+import { selfStore } from '../store.js';
 
 const usage =
     'self on | self off\n' +

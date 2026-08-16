@@ -6,7 +6,7 @@ import {
     contactSerialize,
     contentSerialize,
     messageSerialize
-} from '../src/serialize/serialize.js';
+} from '../src/serialize.js';
 
 const makeEvent = (overrides = {}) => ({
     key: {

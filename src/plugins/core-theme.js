@@ -1,11 +1,6 @@
 import { getContentType, unwrapMessage } from 'zapo-js';
 
-import { getFirstStringAndRest, streamToBuffer } from '../helper/common.js';
-import {
-    createThumbnailLink,
-    downloadThumbnailLink,
-    extractThumbnailFields
-} from '../helper/thumbnail-link.js';
+import { getFirstStringAndRest, streamToBuffer, createThumbnailLink, downloadThumbnailLink, extractThumbnailFields } from '../helpers.js';
 import { themeManager } from '../theme-manager.js';
 
 const Emoji = Object.freeze({

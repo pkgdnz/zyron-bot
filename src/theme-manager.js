@@ -1,6 +1,6 @@
-import stmt from './database/table.js';
-import { JPEG_THUMB } from './helper/thumbnail-link.js';
-import { deserializeMessage, serializeMessage } from './serialize/message.js';
+import stmt from './db.js';
+import { JPEG_THUMB } from './helpers.js';
+import { deserializeMessage, serializeMessage } from './serialize.js';
 
 const hasMediaKey = etm =>
     etm?.mediaKey instanceof Uint8Array && etm.mediaKey.byteLength > 0;
