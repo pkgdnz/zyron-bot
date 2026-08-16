@@ -26,7 +26,6 @@
     "dotenv": "latest",
     "pino": "latest",
     "pino-pretty": "latest",
-    "qrcode-terminal": "latest",
     "ws": "latest",
     "zapo-js": "latest"
   },
