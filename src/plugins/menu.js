@@ -59,73 +59,54 @@ const normalizePlugins = source => {
     return list;
 };
 
-const groupByCategory = pluginList => {
-    const groups = new Map();
+const buildMenuManager = pluginList => {
+    const categoryMap = new Map();
+    const categoryArray = [];
+    let categoryText;
+    let allMenuText;
 
-    for (const plugin of pluginList) {
-        const categories = plugin.category.length > 0
-            ? plugin.category
-            : ['other'];
+    const pluginRowNormalize = pluginList
+        .map(plugin => ({
+            pluginRow: `- ${[...plugin.command].sort().join(', ')} (${plugin.name})`,
+            plugin
+        }))
+        .sort((a, b) => a.pluginRow.localeCompare(b.pluginRow));
 
-        for (const category of categories) {
-            if (!groups.has(category)) groups.set(category, []);
-            groups.get(category).push(plugin);
+    for (const { pluginRow, plugin } of pluginRowNormalize) {
+        for (const category of plugin.category) {
+            const current = categoryMap.get(category) ?? {
+                textArray: [],
+                commandArray: [],
+                finalText: undefined
+            };
+
+            current.textArray.push(pluginRow);
+            plugin.command.forEach(command => current.commandArray.push(command));
+            categoryMap.set(category, current);
         }
     }
 
-    for (const list of groups.values()) {
-        list.sort((a, b) => a.name.localeCompare(b.name));
-    }
+    categoryArray.push(...[...categoryMap.keys()].sort());
 
-    return groups;
-};
+    categoryText = categoryArray.map(category => `- ${category}`).join('\n');
 
-const formatCommandLines = list => {
-    const lines = [];
+    categoryArray.forEach(category => {
+        const entry = categoryMap.get(category);
+        entry.finalText = `*${category}*\n${entry.textArray.join('\n')}`;
+    });
 
-    for (const plugin of list) {
-        const trigger = plugin.command[0] ?? plugin.name;
-        const badge = plugin.ownerOnly ? ' 🔐' : '';
-        lines.push(`• ${trigger}${badge}`);
-        lines.push(`└─ ${plugin.description || 'No description.'}`);
-    }
-
-    return lines;
-};
-
-const buildMenuManager = groups => {
-    const categoryArray = [...groups.keys()].sort();
-    const categoryText = categoryArray
-        .map(category => `* ${category}`)
-        .join('\n');
-    const allMenuText = [...groups.entries()]
-        .map(([category, list]) => [
-            `* ${category}`,
-            ...formatCommandLines(list)
-        ].join('\n'))
+    allMenuText = categoryArray
+        .map(category => categoryMap.get(category).finalText)
         .join('\n\n');
-    const categoryMap = new Map();
 
-    for (const [category, list] of groups) {
-        categoryMap.set(category, {
-            commandArray: list.flatMap(plugin => plugin.command),
-            finalText: [
-                `* ${category}`,
-                ...formatCommandLines(list)
-            ].join('\n')
-        });
-    }
-
-    return { categoryArray, categoryText, allMenuText, categoryMap };
+    return { categoryMap, categoryArray, categoryText, allMenuText };
 };
 
 async function run(ctx) {
     const { sock, jid, m, text } = ctx;
 
     const { firstString, restString } = getFirstStringAndRest(text);
-    const menuManager = buildMenuManager(
-        groupByCategory(normalizePlugins([...plugins.values()]))
-    );
+    const menuManager = buildMenuManager(normalizePlugins([...plugins.values()]));
 
     if (!text) {
         const themeConfig = themeManager.getData();

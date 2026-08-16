@@ -69,8 +69,8 @@ describe('menu plugin', () => {
         const etm = content.extendedTextMessage;
 
         expect(etm.text).toContain('https://theme.example\nhai Andi! berikut kategori yang tersedia');
-        expect(etm.text).toContain('* core');
-        expect(etm.text).toContain('* owner');
+        expect(etm.text).toContain('- core');
+        expect(etm.text).toContain('- owner');
         expect(etm.text).toContain('> gunakan menu <category> untuk liat isi menu');
 
         expect(etm.matchedText).toBe('https://theme.example');
@@ -113,10 +113,10 @@ describe('menu plugin', () => {
         await run(ctx);
 
         const [, body] = ctx.sock.message.send.mock.calls[0];
-        expect(body).toContain('* core');
-        expect(body).toContain('• ping');
-        expect(body).toContain('* owner');
-        expect(body).toContain('• mem');
+        expect(body).toContain('*core*');
+        expect(body).toContain('- ping (ping)');
+        expect(body).toContain('*owner*');
+        expect(body).toContain('- mem (mem)');
         expect(body).toContain('> gunakan command -h untuk melihat help.');
         expect(body).toMatch(/> contoh: (ping|mem|run) -h/);
     });
@@ -128,10 +128,10 @@ describe('menu plugin', () => {
         await run(ctx);
 
         const [, body] = ctx.sock.message.send.mock.calls[0];
-        expect(body).toContain('* core');
-        expect(body).toContain('• ping');
-        expect(body).toContain('Execute code');
-        expect(body).toContain('🔐');
+        expect(body).toContain('*core*');
+        expect(body).toContain('- ping (ping)');
+        expect(body).toContain('- run (run)');
+        expect(body).not.toContain('mem');
     });
 
     it('reports an unknown category', async () => {
