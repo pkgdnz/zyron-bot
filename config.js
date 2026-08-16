@@ -58,9 +58,9 @@ const store = createStore({
         senderKey: 'sqlite',
         appState: 'sqlite',
         privacyToken: 'sqlite',
-        messages: 'sqlite',
-        threads: 'sqlite',
-        contacts: 'sqlite'
+        messages: 'none',
+        threads: 'none',
+        contacts: 'none'
     }
 });
 

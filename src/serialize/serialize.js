@@ -1,4 +1,6 @@
-import { getContentType, isLidJid, unwrapMessage } from 'zapo-js';
+import { getContentType, unwrapMessage } from 'zapo-js';
+
+import { resolveJidPair } from '../helper/common.js';
 
 function reply(text) {
     return this.sock.message.send(
@@ -7,27 +9,6 @@ function reply(text) {
         { quote: this }
     );
 }
-
-const resolveJidPair = (primary, alt) => {
-    let lid = null;
-    let pn = null;
-
-    if (primary && isLidJid(primary)) {
-        lid = primary;
-        pn = alt && !isLidJid(alt) ? alt : null;
-    } else if (primary) {
-        pn = primary;
-        lid = alt && isLidJid(alt) ? alt : null;
-    } else if (alt) {
-        if (isLidJid(alt)) {
-            lid = alt;
-        } else {
-            pn = alt;
-        }
-    }
-
-    return { lid, pn };
-};
 
 const contentSerialize = event => {
     const message = unwrapMessage(event?.message ?? {});

@@ -33,7 +33,7 @@ export function literal(value) {
         const bytes =
             value instanceof ArrayBuffer ? new Uint8Array(value) : value;
         const b64 = Buffer.from(bytes).toString('base64');
-        return `Buffer.from(${JSON.stringify(b64)}, 'base64')`;
+        return JSON.stringify(b64);
     }
     if (Array.isArray(value)) {
         if (value.length === 0) return '[]';

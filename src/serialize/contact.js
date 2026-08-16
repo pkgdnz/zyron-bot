@@ -1,25 +1,6 @@
-import { isLidJid, toUserJid } from 'zapo-js';
+import { toUserJid } from 'zapo-js';
 
-const resolveJidPair = (primary, alt) => {
-    let lid = null;
-    let pn = null;
-
-    if (primary && isLidJid(primary)) {
-        lid = primary;
-        pn = alt && !isLidJid(alt) ? alt : null;
-    } else if (primary) {
-        pn = primary;
-        lid = alt && isLidJid(alt) ? alt : null;
-    } else if (alt) {
-        if (isLidJid(alt)) {
-            lid = alt;
-        } else {
-            pn = alt;
-        }
-    }
-
-    return { lid, pn };
-};
+import { resolveJidPair } from '../helper/common.js';
 
 export function serializeContactFromMessage(event) {
     const { key, pushName, timestampSeconds } = event ?? {};

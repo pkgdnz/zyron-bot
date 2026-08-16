@@ -17,7 +17,8 @@
   ],
   "scripts": {
     "start": "node main.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --test"
   },
   "dependencies": {
     "@zapo-js/store-sqlite": "latest",
