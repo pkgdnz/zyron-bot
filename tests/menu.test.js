@@ -106,6 +106,34 @@ describe('menu plugin', () => {
         expect(content.extendedTextMessage.text).toContain('hai kamu! berikut kategori yang tersedia');
     });
 
+    it('hides the url from the text when a thumbnail is set', async () => {
+        const { themeManager } = await import('../src/theme-manager.js');
+        themeManager.getData.mockReturnValue({
+            title: 'Tema',
+            description: 'Deskripsi',
+            url: 'https://theme.example',
+            message: {
+                extendedTextMessage: {
+                    thumbnailDirectPath: '/mms/thumbnail-link/abc',
+                    mediaKey: new Uint8Array([1, 2, 3]),
+                    thumbnailHeight: 400
+                }
+            }
+        });
+
+        const { run } = (await import('../src/plugins/menu.js')).default;
+        const ctx = makeCtx();
+        await run(ctx);
+
+        const [, content] = ctx.sock.message.send.mock.calls[0];
+        const etm = content.extendedTextMessage;
+
+        expect(etm.matchedText).toBe('https://theme.example');
+        expect(etm.text).not.toContain('https://theme.example');
+        expect(etm.text).toContain('hai Andi! berikut kategori yang tersedia');
+        expect(etm.mediaKey).toEqual(new Uint8Array([1, 2, 3]));
+    });
+
     it('lists every command grouped by category with menu all', async () => {
         const { run } = (await import('../src/plugins/menu.js')).default;
         const ctx = makeCtx();
