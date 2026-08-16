@@ -31,10 +31,7 @@ const DEFAULT_MENU = {
     inviteLinkGroupTypeV2: 0
 };
 
-const buatKataKata = (displayPrefix, randomCommand, content) => `${content ?? ''}
-
-> gunakan command -h untuk melihat help.
-> contoh: ${displayPrefix ?? ''}${randomCommand ?? ''} -h`;
+const buatKataKata = (_, __, content) => content ?? '';
 
 const normalizePlugins = source => {
     const seen = new Set();
