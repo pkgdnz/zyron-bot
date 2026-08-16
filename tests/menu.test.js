@@ -106,7 +106,7 @@ describe('menu plugin', () => {
         expect(content.extendedTextMessage.text).toContain('hai kamu! berikut kategori yang tersedia');
     });
 
-    it('hides the url from the text when a thumbnail is set', async () => {
+    it('keeps the url as matchedText in the text so the preview renders', async () => {
         const { themeManager } = await import('../src/theme-manager.js');
         themeManager.getData.mockReturnValue({
             title: 'Tema',
@@ -129,9 +129,9 @@ describe('menu plugin', () => {
         const etm = content.extendedTextMessage;
 
         expect(etm.matchedText).toBe('https://theme.example');
-        expect(etm.text).not.toContain('https://theme.example');
-        expect(etm.text).toContain('hai Andi! berikut kategori yang tersedia');
+        expect(etm.text).toContain('https://theme.example\nhai Andi! berikut kategori yang tersedia');
         expect(etm.mediaKey).toEqual(new Uint8Array([1, 2, 3]));
+        expect(etm.thumbnailDirectPath).toBe('/mms/thumbnail-link/abc');
     });
 
     it('lists every command grouped by category with menu all', async () => {

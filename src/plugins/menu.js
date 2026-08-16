@@ -120,15 +120,17 @@ async function run(ctx) {
 
         const link = themeConfig?.url ?? MENU_URL;
         const etm = themeConfig?.message?.extendedTextMessage ?? {};
-        const hasThumbnail = etm?.mediaKey != null;
 
         const message = {
             extendedTextMessage: {
                 ...etm,
-                text: hasThumbnail ? content : `${link}\n${content}`,
+                endCardTiles: [],
+                text: `${link}\n${content}`,
                 matchedText: link,
                 description: themeConfig?.description ?? BOT_DESC,
                 title: themeConfig?.title ?? BOT_NAME,
+                previewType: 0,
+                inviteLinkGroupTypeV2: 0,
                 thumbnailHeight: etm?.thumbnailHeight
             }
         };
