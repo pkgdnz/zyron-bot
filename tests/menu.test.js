@@ -1,16 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-let buildLinkPreview;
-
 beforeEach(async () => {
     vi.resetModules();
-
-    buildLinkPreview = vi.fn((body, fallback) => ({
-        extendedTextMessage: {
-            title: fallback.title,
-            text: body
-        }
-    }));
 
     vi.doMock('../config.js', () => ({
         default: { botNumber: '628123456789' }
@@ -46,9 +37,13 @@ beforeEach(async () => {
                 title: 'Tema',
                 description: 'Deskripsi',
                 url: 'https://theme.example',
-                message: null
-            })),
-            buildLinkPreview
+                message: {
+                    extendedTextMessage: {
+                        thumbnailDirectPath: '/mms/thumbnail-link/abc',
+                        thumbnailHeight: 400
+                    }
+                }
+            }))
         }
     }));
 });
@@ -70,26 +65,35 @@ describe('menu plugin', () => {
         const ctx = makeCtx();
         await run(ctx);
 
-        expect(buildLinkPreview).toHaveBeenCalledTimes(1);
-        const [body, fallback] = buildLinkPreview.mock.calls[0];
+        const [, content] = ctx.sock.message.send.mock.calls[0];
+        const etm = content.extendedTextMessage;
 
-        expect(body).toContain('hai Andi! berikut kategori yang tersedia');
-        expect(body).toContain('* core');
-        expect(body).toContain('* owner');
-        expect(body).toContain('> gunakan menu <category> untuk liat isi menu');
+        expect(etm.text).toContain('https://theme.example\nhai Andi! berikut kategori yang tersedia');
+        expect(etm.text).toContain('* core');
+        expect(etm.text).toContain('* owner');
+        expect(etm.text).toContain('> gunakan menu <category> untuk liat isi menu');
 
-        expect(fallback).toEqual({
-            title: 'zyron-bot',
-            description: 'Base WhatsApp multi-device bot powered by Zapo JS.',
-            url: 'https://theme.example'
-        });
+        expect(etm.matchedText).toBe('https://theme.example');
+        expect(etm.description).toBe('Deskripsi');
+        expect(etm.title).toBe('Tema');
+        expect(etm.thumbnailDirectPath).toBe('/mms/thumbnail-link/abc');
+        expect(etm.thumbnailHeight).toBe(400);
+    });
 
-        expect(ctx.sock.message.send).toHaveBeenCalledWith(
-            '123@s.whatsapp.net',
-            expect.objectContaining({
-                extendedTextMessage: expect.objectContaining({ title: 'zyron-bot' })
-            })
-        );
+    it('falls back to bot defaults when the theme is empty', async () => {
+        const { themeManager } = await import('../src/theme-manager.js');
+        themeManager.getData.mockReturnValue({ title: null, description: null, url: null, message: null });
+
+        const { run } = (await import('../src/plugins/menu.js')).default;
+        const ctx = makeCtx();
+        await run(ctx);
+
+        const [, content] = ctx.sock.message.send.mock.calls[0];
+        const etm = content.extendedTextMessage;
+
+        expect(etm.matchedText).toBe('https://wa.me/6283851010908');
+        expect(etm.title).toBe('zyron-bot');
+        expect(etm.description).toBe('Base WhatsApp multi-device bot powered by Zapo JS.');
     });
 
     it('falls back to "kamu" when the sender has no contact name', async () => {
@@ -98,8 +102,8 @@ describe('menu plugin', () => {
         ctx.m.contact = undefined;
         await run(ctx);
 
-        const [body] = buildLinkPreview.mock.calls[0];
-        expect(body).toContain('hai kamu! berikut kategori yang tersedia');
+        const [, content] = ctx.sock.message.send.mock.calls[0];
+        expect(content.extendedTextMessage.text).toContain('hai kamu! berikut kategori yang tersedia');
     });
 
     it('lists every command grouped by category with menu all', async () => {
@@ -111,9 +115,10 @@ describe('menu plugin', () => {
         const [, body] = ctx.sock.message.send.mock.calls[0];
         expect(body).toContain('* core');
         expect(body).toContain('• ping');
+        expect(body).toContain('* owner');
         expect(body).toContain('• mem');
         expect(body).toContain('> gunakan command -h untuk melihat help.');
-        expect(body).toContain('-h');
+        expect(body).toMatch(/> contoh: (ping|mem|run) -h/);
     });
 
     it('lists the commands of a requested category', async () => {

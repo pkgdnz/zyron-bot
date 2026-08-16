@@ -93,49 +93,63 @@ const formatCommandLines = list => {
     return lines;
 };
 
-const formatCategoryText = categories =>
-    categories.map(category => `* ${category}`).join('\n');
-
-const formatAllMenu = groups => {
-    const sections = [];
+const buildMenuManager = groups => {
+    const categoryArray = [...groups.keys()].sort();
+    const categoryText = categoryArray
+        .map(category => `* ${category}`)
+        .join('\n');
+    const allMenuText = [...groups.entries()]
+        .map(([category, list]) => [
+            `* ${category}`,
+            ...formatCommandLines(list)
+        ].join('\n'))
+        .join('\n\n');
+    const categoryMap = new Map();
 
     for (const [category, list] of groups) {
-        sections.push(`* ${category}`);
-        sections.push(...formatCommandLines(list));
-        sections.push('');
+        categoryMap.set(category, {
+            commandArray: list.flatMap(plugin => plugin.command),
+            finalText: [
+                `* ${category}`,
+                ...formatCommandLines(list)
+            ].join('\n')
+        });
     }
 
-    return sections.join('\n').trimEnd();
+    return { categoryArray, categoryText, allMenuText, categoryMap };
 };
-
-const formatCategoryMenu = (category, list) => [
-    `* ${category}`,
-    ...formatCommandLines(list)
-].join('\n');
 
 async function run(ctx) {
     const { sock, jid, m, text } = ctx;
 
     const { firstString, restString } = getFirstStringAndRest(text);
-    const groups = groupByCategory(normalizePlugins([...plugins.values()]));
-    const categories = [...groups.keys()].sort();
+    const menuManager = buildMenuManager(
+        groupByCategory(normalizePlugins([...plugins.values()]))
+    );
 
     if (!text) {
+        const themeConfig = themeManager.getData();
         const senderName = m.contact?.pushName || 'kamu';
 
+        const prefixCommand = 'menu';
         const header = `hai ${senderName}! berikut kategori yang tersedia\n\n`;
-        const body = `${formatCategoryText(categories)}\n\n`;
-        const footer = '> gunakan menu <category> untuk liat isi menu';
+        const body = menuManager.categoryText + '\n\n';
+        const footer = `> gunakan ${prefixCommand} <category> untuk liat isi menu`;
         const content = header + body + footer;
 
-        const { url } = themeManager.getData();
-        const link = url ?? MENU_URL;
+        const link = themeConfig?.url ?? MENU_URL;
+        const etm = themeConfig?.message?.extendedTextMessage ?? {};
 
-        const message = themeManager.buildLinkPreview(`${link}\n${content}`, {
-            title: BOT_NAME,
-            description: BOT_DESC,
-            url: link
-        });
+        const message = {
+            extendedTextMessage: {
+                ...etm,
+                text: `${link}\n${content}`,
+                matchedText: link,
+                description: themeConfig?.description ?? BOT_DESC,
+                title: themeConfig?.title ?? BOT_NAME,
+                thumbnailHeight: etm?.thumbnailHeight
+            }
+        };
 
         try {
             await sock.message.send(jid, message);
@@ -148,24 +162,23 @@ async function run(ctx) {
     }
 
     if (firstString === 'all' && !restString) {
-        const randomCategory = getOneRandomElemenFrom(categories);
-        const list = groups.get(randomCategory) ?? [];
-        const randomPlugin = getOneRandomElemenFrom(list);
-        const randomCommand = randomPlugin?.command?.[0];
+        const randomCategory = getOneRandomElemenFrom(menuManager.categoryArray);
+        const randomCommand = getOneRandomElemenFrom(
+            menuManager.categoryMap.get(randomCategory).commandArray
+        );
 
-        await sock.message.send(jid, buatKataKata('', randomCommand, formatAllMenu(groups)));
+        await sock.message.send(jid, buatKataKata('', randomCommand, menuManager.allMenuText));
         return;
     }
 
     const userCategory = text.trim();
-    const list = groups.get(userCategory);
+    const choosenCategory = menuManager.categoryMap.get(userCategory);
 
-    if (!list) return m.reply(`tidak ada kategori *${text}*`);
+    if (!choosenCategory) return m.reply(`tidak ada kategori *${text}*`);
 
-    const randomPlugin = getOneRandomElemenFrom(list);
-    const randomCommand = randomPlugin?.command?.[0];
+    const randomCommand = getOneRandomElemenFrom(choosenCategory.commandArray);
 
-    await sock.message.send(jid, buatKataKata('', randomCommand, formatCategoryMenu(userCategory, list)));
+    await sock.message.send(jid, buatKataKata('', randomCommand, choosenCategory.finalText));
 }
 
 const plugin = {
