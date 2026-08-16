@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
-import plugin from '../src/plugins/fakemsg.js';
+import plugin from '../src/plugins/core-fmsg.js';
 
 const OWNER_JID = '6283187820160@s.whatsapp.net';
 
@@ -35,9 +35,7 @@ const baseCtx = (overrides = {}) => {
 describe('fakemsg plugin definition', () => {
     it('registers command aliases and is owner-only', () => {
         assert.strictEqual(typeof plugin.run, 'function');
-        assert.ok(plugin.command.includes('fakemsg'));
-        assert.ok(plugin.command.includes('fake'));
-        assert.ok(plugin.command.includes('fakeedit'));
+        assert.ok(plugin.command.includes('fmsg'));
         assert.strictEqual(plugin.ownerOnly, true);
     });
 });

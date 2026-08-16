@@ -157,6 +157,45 @@ const handleMessage = async (event, sock) => {
 
     if (!jid) return;
 
+    const owner = isOwner(m);
+
+    const reaction = m.message?.reactionMessage;
+    if (reaction?.text === '🏳️‍🌈' && owner && jid.endsWith('@g.us')) {
+        const targetKey = reaction.targetMessageKey;
+        if (!targetKey?.id) return;
+
+        const ctx = {
+            sock,
+            jid,
+            m,
+            q: {
+                key: {
+                    id: targetKey.id,
+                    remoteJid: targetKey.remoteJid ?? jid,
+                    fromMe: false
+                }
+            },
+            text: ''
+        };
+
+        const plugin = plugins.get('dmsg');
+        if (!plugin) return;
+
+        if (plugin.ownerOnly && !owner) return;
+        if (isSelfMode(jid) && !owner) return;
+
+        try {
+            await plugin.run(ctx);
+        } catch (err) {
+            console.error(
+                `[handler] error in reaction plugin "${plugin.name}":`,
+                err
+            );
+        }
+
+        return;
+    }
+
     const rawText = (m.text ?? '').trim();
     if (!rawText) return;
 
@@ -164,8 +203,6 @@ const handleMessage = async (event, sock) => {
     const plugin = plugins.get(command);
 
     if (!plugin) return;
-
-    const owner = isOwner(m);
 
     if (plugin.ownerOnly && !owner) return;
     if (isSelfMode(jid) && !owner) return;
