@@ -11,7 +11,7 @@ import { handleMessage } from './handler.js';
 import {
     serializeContactFromMessage,
     serializeSelfContact
-} from './src/serialize/contact.js';
+} from './src/serialize.js';
 
 const logger = await createPinoLogger({ level: 'error' });
 
