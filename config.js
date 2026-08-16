@@ -35,10 +35,13 @@ if (!botNumber) {
 }
 
 const res = (...paths) => path.resolve(import.meta.dirname, ...paths);
+const dataRoot = process.env.ZYRON_DATA_DIR?.trim()
+    ? path.resolve(process.env.ZYRON_DATA_DIR)
+    : res('data');
 
 const pathConfig = Object.freeze({
-    authState: res('data', 'auth.db'),
-    database: res('data', 'database.db'),
+    authState: path.join(dataRoot, 'auth.db'),
+    database: path.join(dataRoot, 'database.db'),
     plugins: res('src', 'plugins')
 });
 
