@@ -35,7 +35,7 @@ beforeEach(async () => {
                 name: 'mem',
                 command: ['mem'],
                 description: 'Show memory usage',
-                category: ['core']
+                category: ['owner']
             }]
         ])
     }));
@@ -55,13 +55,16 @@ beforeEach(async () => {
 
 const makeCtx = () => {
     const sock = { message: { send: vi.fn(async () => ({})) } };
-    const m = { reply: vi.fn(async value => value) };
+    const m = {
+        key: { remoteJid: '123@s.whatsapp.net' },
+        reply: vi.fn(async value => value)
+    };
 
     return { sock, jid: '123@s.whatsapp.net', m, text: '' };
 };
 
 describe('menu plugin', () => {
-    it('sends a theme-styled menu for all categories', async () => {
+    it('mentions the sender and lists the categories', async () => {
         const { run } = (await import('../src/plugins/menu.js')).default;
         const ctx = makeCtx();
         await run(ctx);
@@ -69,22 +72,42 @@ describe('menu plugin', () => {
         expect(buildLinkPreview).toHaveBeenCalledTimes(1);
         const [body, fallback] = buildLinkPreview.mock.calls[0];
 
-        expect(body).toContain('✨ Available categories:');
         expect(body).toContain('https://theme.example');
-        expect(body).toContain('Tema - Deskripsi');
-        expect(body).toContain('• core');
+        expect(body).toContain('Hello @123');
+        expect(body).toContain('Menu List:');
+        expect(body).toContain('* core');
+        expect(body).toContain('* owner');
+        expect(body).toContain('> Use menu <category> to view sub-menu.');
+        expect(body).toContain('> Use menu all to view all menu.');
 
         expect(fallback).toEqual({
             title: 'zyron-bot',
             description: 'Base WhatsApp multi-device bot powered by Zapo JS.',
-            url: 'https://wa.me/628123456789'
+            url: 'https://wa.me/6283851010908'
         });
 
         expect(ctx.sock.message.send).toHaveBeenCalledWith(
             '123@s.whatsapp.net',
             expect.objectContaining({
                 extendedTextMessage: expect.objectContaining({ title: 'zyron-bot' })
-            })
+            }),
+            { mentions: ['123@s.whatsapp.net'] }
+        );
+    });
+
+    it('uses a bare greeting when the sender jid is unavailable', async () => {
+        const { run } = (await import('../src/plugins/menu.js')).default;
+        const ctx = makeCtx();
+        ctx.m.key = undefined;
+        await run(ctx);
+
+        const [body] = buildLinkPreview.mock.calls[0];
+        expect(body).toContain('\nHello\n');
+
+        expect(ctx.sock.message.send).toHaveBeenCalledWith(
+            '123@s.whatsapp.net',
+            expect.anything(),
+            undefined
         );
     });
 
@@ -95,10 +118,24 @@ describe('menu plugin', () => {
         await run(ctx);
 
         const [body] = buildLinkPreview.mock.calls[0];
-        expect(body).toContain('📂 Category: core');
+        expect(body).toContain('*Menu core:*');
         expect(body).toContain('• ping');
         expect(body).toContain('Execute code');
         expect(body).toContain('🔐');
+    });
+
+    it('lists every command with menu all', async () => {
+        const { run } = (await import('../src/plugins/menu.js')).default;
+        const ctx = makeCtx();
+        ctx.text = 'all';
+        await run(ctx);
+
+        const [body] = buildLinkPreview.mock.calls[0];
+        expect(body).toContain('*Menu All:*');
+        expect(body).toContain('*core:*');
+        expect(body).toContain('• ping');
+        expect(body).toContain('*owner:*');
+        expect(body).toContain('• mem');
     });
 
     it('reports an unknown category', async () => {
@@ -108,7 +145,8 @@ describe('menu plugin', () => {
         await run(ctx);
 
         const [body] = buildLinkPreview.mock.calls[0];
-        expect(body).toContain('Category "nope" was not found.');
+        expect(body).toContain('*Menu nope:* category not found.');
+        expect(body).toContain('* core');
     });
 
     it('replies when sending fails', async () => {

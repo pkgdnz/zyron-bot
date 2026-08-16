@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import cfg from '../../config.js';
 import { plugins } from '../plugin-registry.js';
 import { themeManager } from '../theme-manager.js';
 
@@ -11,12 +10,12 @@ const pkg = JSON.parse(
 
 const BOT_NAME = pkg.name || 'zyron-bot';
 const BOT_DESC = pkg.description || 'WhatsApp Bot';
-const BOT_NUMBER = (cfg.botNumber ?? '').replace(/\D/g, '');
-const BOT_URL = BOT_NUMBER
-    ? `https://wa.me/${BOT_NUMBER}`
-    : 'https://www.whatsapp.com/';
+const MENU_URL = 'https://wa.me/6283851010908';
 
-const FOOTER = '> Use menu <category> to view commands in a category.';
+const FOOTER = [
+    '> Use menu <category> to view sub-menu.',
+    '> Use menu all to view all menu.'
+].join('\n');
 
 const normalizePlugins = source => {
     const seen = new Set();
@@ -80,22 +79,7 @@ const groupByCategory = pluginList => {
     return groups;
 };
 
-const formatHeader = () => {
-    const { title, description, url } = themeManager.getData();
-    return `${url ?? BOT_URL}\n${title ?? BOT_NAME} - ${description ?? BOT_DESC}`;
-};
-
-const formatCategories = categories => [
-    formatHeader(),
-    '',
-    '✨ Available categories:',
-    '',
-    ...categories.map(category => `• ${category}`),
-    '',
-    FOOTER
-].join('\n');
-
-const formatCategory = (category, list) => {
+const formatCommandLines = list => {
     const lines = [];
 
     for (const plugin of list) {
@@ -105,25 +89,64 @@ const formatCategory = (category, list) => {
         lines.push(`└─ ${plugin.description || 'No description.'}`);
     }
 
+    return lines;
+};
+
+const formatCategories = (categories, link, greeting) => [
+    link,
+    '',
+    greeting,
+    '',
+    'Menu List:',
+    '',
+    ...categories.map(category => `* ${category}`),
+    '',
+    FOOTER
+].join('\n');
+
+const formatCategory = (category, list, link, greeting) => [
+    link,
+    '',
+    greeting,
+    '',
+    `*Menu ${category}:*`,
+    '',
+    ...formatCommandLines(list),
+    '',
+    FOOTER
+].join('\n');
+
+const formatAll = (groups, link, greeting) => {
+    const sections = [];
+
+    for (const [category, list] of groups) {
+        sections.push(`*${category}:*`);
+        sections.push(...formatCommandLines(list));
+        sections.push('');
+    }
+
     return [
-        formatHeader(),
+        link,
         '',
-        `📂 Category: ${category}`,
+        greeting,
         '',
-        ...lines,
+        '*Menu All:*',
         '',
+        ...sections,
         FOOTER
     ].join('\n');
 };
 
-const formatNotFound = (query, categories) => [
-    formatHeader(),
+const formatNotFound = (query, categories, link, greeting) => [
+    link,
     '',
-    `❌ Category "${query}" was not found.`,
+    greeting,
     '',
-    '✨ Available categories:',
+    `*Menu ${query}:* category not found.`,
     '',
-    ...categories.map(category => `• ${category}`),
+    'Available categories:',
+    '',
+    ...categories.map(category => `* ${category}`),
     '',
     FOOTER
 ].join('\n');
@@ -133,27 +156,39 @@ const run = async ({ sock, jid, m, text }) => {
     const categories = [...groups.keys()].sort();
     const query = (text ?? '').trim().toLowerCase();
 
+    const senderJid = m.key?.participant ?? m.key?.remoteJid;
+    const senderNumber = (senderJid ?? '').split('@')[0];
+    const greeting = senderNumber ? `Hello @${senderNumber}` : 'Hello';
+
+    const { url } = themeManager.getData();
+    const link = url ?? MENU_URL;
+
     let body;
 
-    if (!query) {
+    if (query === 'all') {
         body = categories.length > 0
-            ? formatCategories(categories)
+            ? formatAll(groups, link, greeting)
+            : '⚠️ No plugins are currently registered.';
+    } else if (!query) {
+        body = categories.length > 0
+            ? formatCategories(categories, link, greeting)
             : '⚠️ No plugins are currently registered.';
     } else {
         const list = groups.get(query);
         body = list
-            ? formatCategory(query, list)
-            : formatNotFound(query, categories);
+            ? formatCategory(query, list, link, greeting)
+            : formatNotFound(query, categories, link, greeting);
     }
 
     const content = themeManager.buildLinkPreview(body, {
         title: BOT_NAME,
         description: BOT_DESC,
-        url: BOT_URL
+        url: MENU_URL
     });
 
     try {
-        await sock.message.send(jid, content);
+        const options = senderJid ? { mentions: [senderJid] } : undefined;
+        await sock.message.send(jid, content, options);
     } catch (err) {
         console.error('[menu]', err);
         return m.reply(`Failed to send menu: ${err?.message ?? err}`);
