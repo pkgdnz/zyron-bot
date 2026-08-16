@@ -17,8 +17,7 @@
   ],
   "scripts": {
     "start": "node main.js",
-    "lint": "eslint .",
-    "test": "vitest run"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@zapo-js/store-sqlite": "latest",
@@ -31,8 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "latest",
-    "eslint": "latest",
-    "vitest": "latest"
+    "eslint": "latest"
   },
   "allowScripts": {
     "better-sqlite3": true,

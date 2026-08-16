@@ -89,6 +89,7 @@ const run = async ({ sock, jid, m, q }) => {
             mimetype: 'text/javascript',
             fileName: filename
         }, { quote: q });
+        await sock.message.send(jid, content, options ?? {});
     } catch (err) {
         console.error('[crm]', err);
         return m.reply(`Gagal generate: ${err?.message ?? err}`);

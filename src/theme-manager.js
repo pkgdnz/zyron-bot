@@ -1,5 +1,9 @@
 import stmt from './database/table.js';
+import { JPEG_THUMB } from './helper/thumbnail-link.js';
 import { deserializeMessage, serializeMessage } from './serialize/message.js';
+
+const hasMediaKey = etm =>
+    etm?.mediaKey instanceof Uint8Array && etm.mediaKey.byteLength > 0;
 
 const validateUrl = url => {
     try {
@@ -33,7 +37,7 @@ class ThemeManager {
             `[theme-manager] loaded title=${this.#title ? 'on' : 'off'} ` +
             `description=${this.#description ? 'on' : 'off'} ` +
             `url=${this.#url ? 'on' : 'off'} ` +
-            `thumbnail=${this.#message?.extendedTextMessage?.mediaKey ? 'on' : 'off'} ` +
+            `thumbnail=${hasMediaKey(this.#message?.extendedTextMessage) ? 'on' : 'off'} ` +
             `favicon=${this.#message?.extendedTextMessage?.faviconMMSMetadata?.mediaKey ? 'on' : 'off'}`
         );
     }
@@ -70,7 +74,13 @@ class ThemeManager {
                 text: bodyText,
                 matchedText: url ?? fallback.url,
                 previewType: 0,
-                inviteLinkGroupTypeV2: 0
+                inviteLinkGroupTypeV2: 0,
+                jpegThumbnail: etm?.jpegThumbnail ?? Buffer.from(JPEG_THUMB, 'base64'),
+                contextInfo: {
+                    mentionedJid: [],
+                    groupMentions: [],
+                    statusAttributions: []
+                }
             }
         };
     }
@@ -136,7 +146,7 @@ class ThemeManager {
             return { data: 'thumbnail kembali ke stock' };
         }
 
-        if (!value?.extendedTextMessage?.mediaKey) {
+        if (!hasMediaKey(value?.extendedTextMessage)) {
             return { error: 'thumbnail tidak valid' };
         }
 
@@ -183,7 +193,7 @@ class ThemeManager {
         }
 
         const source = value?.extendedTextMessage;
-        if (!source?.thumbnailDirectPath || !source?.mediaKey) {
+        if (!source?.thumbnailDirectPath || !hasMediaKey(source)) {
             return { error: 'favicon tidak valid' };
         }
 
@@ -233,7 +243,7 @@ class ThemeManager {
         if (message != null) {
             parsedMessage = deserializeMessage(JSON.stringify(message));
             const etm = parsedMessage?.extendedTextMessage;
-            if (!(etm?.mediaKey instanceof Uint8Array)) {
+            if (!hasMediaKey(etm)) {
                 return { error: 'message di file tidak valid' };
             }
         }

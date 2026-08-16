@@ -2,7 +2,7 @@ import { WaMediaTransferClient } from 'zapo-js';
 
 import { getImageDimensions } from './image-processing.js';
 
-const JPEG_THUMB =
+export const JPEG_THUMB =
     'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAAAnOwc2AAAADElEQVR4nGNgGG4AAADSAAFQmYCvAAAAAElFTkSuQmCC';
 
 /**

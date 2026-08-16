@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { getFirstStringAndRest, getOneRandomElemenFrom } from '../helper/common.js';
+import { JPEG_THUMB } from '../helper/thumbnail-link.js';
 import { plugins } from '../plugin-registry.js';
 import { themeManager } from '../theme-manager.js';
 
@@ -120,23 +121,42 @@ async function run(ctx) {
 
         const link = themeConfig?.url ?? MENU_URL;
         const etm = themeConfig?.message?.extendedTextMessage ?? {};
+        const hasValidThumbnail =
+            etm?.mediaKey instanceof Uint8Array && etm.mediaKey.byteLength > 0;
+
+        const thumbnailFields = hasValidThumbnail
+            ? {
+                thumbnailDirectPath: etm.thumbnailDirectPath,
+                thumbnailSha256: etm.thumbnailSha256,
+                thumbnailEncSha256: etm.thumbnailEncSha256,
+                mediaKey: etm.mediaKey,
+                mediaKeyTimestamp: etm.mediaKeyTimestamp,
+                thumbnailWidth: etm.thumbnailWidth,
+                thumbnailHeight: etm.thumbnailHeight
+            }
+            : {};
 
         const message = {
             extendedTextMessage: {
-                ...etm,
-                endCardTiles: [],
+                title: themeConfig?.title ?? BOT_NAME,
+                description: themeConfig?.description ?? BOT_DESC,
                 text: `${link}\n${content}`,
                 matchedText: link,
-                description: themeConfig?.description ?? BOT_DESC,
-                title: themeConfig?.title ?? BOT_NAME,
                 previewType: 0,
                 inviteLinkGroupTypeV2: 0,
-                thumbnailHeight: etm?.thumbnailHeight
+                endCardTiles: [],
+                jpegThumbnail: etm?.jpegThumbnail ?? Buffer.from(JPEG_THUMB, 'base64'),
+                contextInfo: {
+                    mentionedJid: [],
+                    groupMentions: [],
+                    statusAttributions: []
+                },
+                ...thumbnailFields
             }
         };
 
         try {
-            await sock.message.send(jid, message);
+            await sock.message.send(jid, message, { quote: m });
         } catch (err) {
             console.error('[menu]', err);
             return m.reply(`Failed to send menu: ${err?.message ?? err}`);
