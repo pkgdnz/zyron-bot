@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { getFirstStringAndRest, getOneRandomElemenFrom } from '../helper/common.js';
-import { JPEG_THUMB } from '../helper/thumbnail-link.js';
 import { plugins } from '../plugin-registry.js';
 import { themeManager } from '../theme-manager.js';
 
@@ -11,8 +10,26 @@ const pkg = JSON.parse(
 );
 
 const BOT_NAME = pkg.name || 'zyron-bot';
-const BOT_DESC = pkg.description || 'WhatsApp Bot';
 const MENU_URL = 'https://wa.me/6283851010908';
+
+const DEFAULT_MENU = {
+    matchedText: MENU_URL,
+    description: 'by fodnz',
+    title: BOT_NAME,
+    previewType: 0,
+    jpegThumbnail: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAAAnOwc2AAAADElEQVR4nGNgGG4AAADSAAFQmYCvAAAAAElFTkSuQmCC',
+        'base64'
+    ),
+    thumbnailDirectPath: '/v/t62.36144-24/538929718_1356594116182613_2588911856000981874_n.enc?ccb=11-4&oh=01_Q5Aa5QGufdWV-WHNwh5mR5YO_t4V8K7nWg2kj5eJ7xxtoCjmyQ&oe=6AA8B320&_nc_sid=5e03e0',
+    thumbnailSha256: Buffer.from('h2HKrhjbdj7tbROUVNiBhdX38kgTwV412OlCYG9cTMQ=', 'base64'),
+    thumbnailEncSha256: Buffer.from('maMOsW9bI5L5u7tFPCVqFYYSxZSUfi6+Fw39thdmj/U=', 'base64'),
+    mediaKey: Buffer.from('FkLTJsA4tsPzEQlpEW90m7OHbcULyeVPfIGvl7owU9g=', 'base64'),
+    mediaKeyTimestamp: { low: 1786860289, high: 0, unsigned: false },
+    thumbnailHeight: 1596,
+    thumbnailWidth: 736,
+    inviteLinkGroupTypeV2: 0
+};
 
 const buatKataKata = (displayPrefix, randomCommand, content) => `${content ?? ''}
 
@@ -132,26 +149,25 @@ async function run(ctx) {
                 mediaKey: etm.mediaKey,
                 mediaKeyTimestamp: etm.mediaKeyTimestamp,
                 thumbnailWidth: etm.thumbnailWidth,
-                thumbnailHeight: etm.thumbnailHeight
+                thumbnailHeight: etm.thumbnailHeight,
+                jpegThumbnail: etm.jpegThumbnail
             }
             : {};
 
         const message = {
             extendedTextMessage: {
-                title: themeConfig?.title ?? BOT_NAME,
-                description: themeConfig?.description ?? BOT_DESC,
+                ...DEFAULT_MENU,
+                ...thumbnailFields,
+                title: themeConfig?.title ?? DEFAULT_MENU.title,
+                description: themeConfig?.description ?? DEFAULT_MENU.description,
                 text: `${link}\n${content}`,
                 matchedText: link,
-                previewType: 0,
-                inviteLinkGroupTypeV2: 0,
                 endCardTiles: [],
-                jpegThumbnail: etm?.jpegThumbnail ?? Buffer.from(JPEG_THUMB, 'base64'),
                 contextInfo: {
                     mentionedJid: [],
                     groupMentions: [],
                     statusAttributions: []
-                },
-                ...thumbnailFields
+                }
             }
         };
 

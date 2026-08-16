@@ -1,7 +1,6 @@
 export function getImageDimensions(buffer) {
     if (!buffer || buffer.length < 24) return undefined;
 
-    // PNG: width @ 16, height @ 20 (big-endian)
     if (buffer.length > 24 && buffer.readUInt32BE(0) === 0x89504e47) {
         return {
             width: buffer.readUInt32BE(16),
@@ -9,7 +8,6 @@ export function getImageDimensions(buffer) {
         };
     }
 
-    // GIF: width @ 6, height @ 8 (little-endian)
     if (buffer.length > 10 && buffer.toString('ascii', 0, 3) === 'GIF') {
         return {
             width: buffer.readUInt16LE(6),
@@ -17,7 +15,6 @@ export function getImageDimensions(buffer) {
         };
     }
 
-    // WebP: RIFF....WEBP
     if (
         buffer.length > 30 &&
         buffer.toString('ascii', 0, 4) === 'RIFF' &&
@@ -35,7 +32,6 @@ export function getImageDimensions(buffer) {
         }
     }
 
-    // JPEG: scan SOF markers (FFC0-FFC3, FFC5-FFC7, FFC9-FFCB, FFCD-FFCF)
     if (buffer[0] === 0xff && buffer[1] === 0xd8) {
         let offset = 2;
         while (offset + 9 < buffer.length) {

@@ -6,12 +6,9 @@ import { WebSocket } from 'ws';
 
 import cfg from './config.js';
 
-import { contactStore } from './src/contacts-store.js';
-import { messageStore } from './src/messages-store.js';
-import { bindGroupEvents, fetchAllGroups } from './src/group-store.js';
 import { handleMessage } from './handler.js';
+import { zapoSession } from './src/zapo-store.js';
 import {
-    serializeContactFromMessage,
     serializeSelfContact
 } from './src/serialize/contact.js';
 
@@ -25,15 +22,8 @@ await fs.mkdir(path.dirname(cfg.path.authState), {
 
 function bindStoreEvents(sock) {
     sock.on('message', event => {
-        messageStore.insert(event);
-
-        const contact = serializeContactFromMessage(event);
-        if (contact) contactStore.upsertAndGet(contact);
-
         void handleMessage(event, sock);
     });
-
-    bindGroupEvents(sock);
 }
 
 let pairingRequested = false;
@@ -72,11 +62,23 @@ function bindConnectionEvents(sock) {
             console.log('bot connected');
 
             const self = serializeSelfContact(sock);
-            if (self) contactStore.upsertAndGet(self);
-
-            void fetchAllGroups(sock).catch(err => {
-                console.error('[bot] group sync failed:', err);
-            });
+            if (self) {
+                const lid = self.lid ?? null;
+                const pn = self.pn ?? null;
+                const jid = lid ?? pn;
+                if (jid) {
+                    void zapoSession().contacts.upsert({
+                        jid,
+                        displayName: self.pushName ?? undefined,
+                        pushName: self.pushName ?? undefined,
+                        ...(lid ? { lid } : {}),
+                        ...(pn ? { phoneNumber: pn } : {}),
+                        lastUpdatedMs: Date.now()
+                    }).catch(err => {
+                        console.error('[bot] self contact persist failed:', err);
+                    });
+                }
+            }
 
             return;
         }
@@ -110,6 +112,9 @@ async function start() {
             history: {
                 enabled: true,
                 requireFullSync: true
+            },
+            writeBehind: {
+                flushTimeoutMs: 1000
             }
         },
         logger

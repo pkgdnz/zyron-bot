@@ -68,7 +68,7 @@ const run = async ({ sock, jid, m, q }) => {
         return m.reply('Reply ke pesan yang mau di-generate codenya.');
     }
 
-    const resolved = resolveMessageContent(q);
+    const resolved = await resolveMessageContent(q);
     if (!resolved) {
         return m.reply('Format pesan ini tidak bisa di-generate.');
     }

@@ -1,8 +1,5 @@
 import { getContentType, isLidJid, unwrapMessage } from 'zapo-js';
 
-import { chatStore } from '../chats-store.js';
-import { contactStore } from '../contacts-store.js';
-
 function reply(text) {
     return this.sock.message.send(
         this.key.remoteJid,
@@ -110,10 +107,6 @@ const quotedSerialize = (event, sock) => {
             null
     };
 
-    q.contact =
-        contactStore.getByPn(contextInfo?.participant) ??
-        contactStore.getByLid(contextInfo?.participant);
-
     Object.defineProperty(q, 'sock', {
         value: sock,
         enumerable: false
@@ -131,12 +124,10 @@ const messageSerialize = (event, sock) => {
     const m = { ...event };
 
     const chatBase = chatSerialize(m);
-    m.chat = chatBase ? chatStore.upsertAndGet(chatBase) : undefined;
+    if (chatBase) m.chat = chatBase;
 
     const contactBase = contactSerialize(m);
-    m.contact = contactBase
-        ? contactStore.upsertAndGet(contactBase)
-        : undefined;
+    if (contactBase) m.contact = contactBase;
 
     m.sender =
         m.contact?.lid ?? m.key?.participant ?? m.key?.remoteJid;

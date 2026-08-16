@@ -5,14 +5,6 @@ import { getImageDimensions } from './image-processing.js';
 export const JPEG_THUMB =
     'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAAAnOwc2AAAADElEQVR4nGNgGG4AAADSAAFQmYCvAAAAAElFTkSuQmCC';
 
-/**
- * @typedef {object} ThumbnailContent
- * @property {string} [url]
- * @property {string} [title]
- * @property {string} [description]
- * @property {string} [text]
- */
-
 const extractMediaFields = uploaded => ({
     thumbnailDirectPath: uploaded.directPath,
     thumbnailSha256: uploaded.fileSha256,
@@ -21,16 +13,6 @@ const extractMediaFields = uploaded => ({
     mediaKeyTimestamp: uploaded.mediaKeyTimestamp
 });
 
-/**
- * Mengupload gambar sebagai thumbnail-link dan mengembalikan
- * `extendedTextMessage` siap pakai untuk theme.
- *
- * @param {import('zapo-js').WaClient} client
- * @param {Buffer} buffer
- * @param {string} mimetype
- * @param {ThumbnailContent} [thumbnailContent]
- * @returns {Promise<object>}
- */
 export const createThumbnailLink = async (
     client,
     buffer,
@@ -73,14 +55,6 @@ export const createThumbnailLink = async (
     };
 };
 
-/**
- * Mengambil field media dari sebuah `extendedTextMessage` yang dibuat oleh
- * {@link createThumbnailLink}. Mengembalikan `undefined` bila media tidak
- * lengkap.
- *
- * @param {object|undefined} wamc
- * @returns {{directPath: string, mediaKey: Uint8Array, fileSha256?: Uint8Array, fileEncSha256?: Uint8Array, mimetype?: string}|undefined}
- */
 export const extractThumbnailFields = wamc => {
     const etm = wamc?.extendedTextMessage;
     if (!etm?.thumbnailDirectPath || !etm?.mediaKey) return undefined;
@@ -94,14 +68,6 @@ export const extractThumbnailFields = wamc => {
     };
 };
 
-/**
- * Download sebuah thumbnail-link yang di-upload oleh
- * {@link createThumbnailLink} dan mengembalikannya sebagai stream.
- *
- * @param {{directPath: string, mediaKey: Uint8Array, fileSha256?: Uint8Array, fileEncSha256?: Uint8Array}} fields
- * @param {{timeoutMs?: number, signal?: AbortSignal, maxBytes?: number}} [options]
- * @returns {Promise<import('node:stream').Readable>}
- */
 export const downloadThumbnailLink = async (fields, options = {}) => {
     if (!fields?.mediaKey || !fields?.directPath) {
         throw new Error('thumbnail-link media tidak lengkap');

@@ -59,11 +59,6 @@ const react = async ({ sock, jid, m }, emoji) => {
     }
 };
 
-/**
- * @param {object} sock
- * @param {object} msg
- * @returns {Promise<{buffer: Buffer, mimetype: string}|undefined>}
- */
 const getImageFromMessage = async (sock, msg) => {
     try {
         const normalize = unwrapMessage(msg?.message ?? {});
