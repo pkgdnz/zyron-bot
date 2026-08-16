@@ -88,6 +88,7 @@ A normal `SIGINT` or `SIGTERM` shutdown cleans up the local runtime without inte
 | `self` | Yes | Toggle global self mode. |
 | `self -gc on/off` | Yes | Enable or disable self mode for the current group. |
 | `cms` | No | Generate reproduction code for a quoted message. |
+| `theme` | No | Manage the bot theme (title, description, url, thumbnail, favicon). |
 
 ### 👑 Owner-only tools
 
@@ -195,6 +196,36 @@ self -gc off
 
 Global and per-group settings are persisted in SQLite and restored when the bot restarts.
 
+## 🎨 Theme Manager
+
+The `theme` command manages a global bot theme (title, description, url, link-preview thumbnail, and favicon) persisted in SQLite and restored on restart.
+
+```text
+theme                       Show available subcommands
+theme title set <text>      Set the theme title
+theme title get             Show the current title
+theme title clear           Reset the title
+theme desc set <text>       Set the theme description
+theme desc get              Show the current description
+theme desc clear            Reset the description
+theme url set <url>         Set the theme url
+theme url get               Show the current url
+theme thumb set <url>       Set the link-preview thumbnail from a url
+theme thumb set             Set it from a replied/uploaded image or thumbnail
+theme thumb get             Re-send the stored thumbnail as an image
+theme thumb height <ratio>  Override the thumbnail height ratio (0.2 - 1)
+theme thumb stock           Reset the thumbnail to the default
+theme fav set <url>         Set the theme favicon from a url
+theme fav set               Set it from a replied/uploaded image or thumbnail
+theme fav get               Re-send the stored favicon as an image
+theme fav clear             Reset the favicon
+theme export <name>         Export the theme as a JSON document
+theme use                   Import a theme from a quoted JSON document
+theme preview               Work in progress
+```
+
+Thumbnail and favicon inputs accept an image url, a reply to an image/thumbnail/document-with-image, or a directly uploaded image. Uploaded media is encrypted as a WhatsApp `thumbnail-link`, so it can be re-downloaded and re-sent on demand.
+
 ## 🗄️ Database
 
 Zyron Bot uses two separate SQLite databases.
@@ -212,6 +243,7 @@ Managed by Zyron Bot. It stores application data such as:
 - `messages` — Serialized message records
 - `self_settings` — Global self-mode state
 - `self_groups` — Per-group self-mode overrides
+- `theme` — Global theme (title, description, url, thumbnail, favicon)
 
 The schema is initialized automatically. The application also contains migration handling for recognized legacy `messages` schemas.
 
@@ -241,11 +273,13 @@ zyron-bot/
 │   ├── plugins/                # Built-in and custom plugins
 │   ├── database/               # SQLite schema and prepared statements
 │   ├── serialize/              # Message, chat, and contact serialization
+│   ├── helper/                 # Shared helpers (media, text, streams)
 │   ├── chats-store.js          # Chat state store
 │   ├── contacts-store.js       # Contact state store
 │   ├── messages-store.js       # Persistent message store
 │   ├── group-store.js          # Group state and events
 │   ├── self-store.js           # Global/group self-mode state
+│   ├── theme-manager.js        # Global theme state
 │   ├── owner.js                # Owner detection
 │   ├── plugin-registry.js      # Active plugin registry
 │   ├── message-resolve.js      # Message resolution helpers

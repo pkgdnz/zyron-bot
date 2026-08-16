@@ -40,6 +40,15 @@ db.exec(`
         self_override INTEGER,
         updated_at INTEGER NOT NULL DEFAULT (unixepoch('now'))
     ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS theme (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        title TEXT,
+        description TEXT,
+        url TEXT,
+        message BLOB,
+        updated_at INTEGER NOT NULL DEFAULT (unixepoch('now'))
+    ) STRICT;
 `);
 
 const messagesExists = db

@@ -158,6 +158,51 @@ const stmt = {
         `)
     },
 
+    theme: {
+        get: db.prepare(`
+            SELECT
+                id,
+                title,
+                description,
+                url,
+                message,
+                updated_at AS updatedAt
+            FROM theme
+            WHERE id = 1
+        `),
+
+        upsert: db.prepare(`
+            INSERT INTO theme (
+                id,
+                title,
+                description,
+                url,
+                message,
+                updated_at
+            )
+            VALUES (
+                1,
+                :title,
+                :description,
+                :url,
+                :message,
+                unixepoch('now')
+            )
+            ON CONFLICT (id) DO UPDATE SET
+                title = excluded.title,
+                description = excluded.description,
+                url = excluded.url,
+                message = excluded.message,
+                updated_at = unixepoch('now')
+            RETURNING
+                id,
+                title,
+                description,
+                url,
+                message
+        `)
+    },
+
     messages: {
         upsert: db.prepare(`
             INSERT INTO messages (

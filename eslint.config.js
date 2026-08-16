@@ -3,6 +3,7 @@ import js from '@eslint/js';
 const nodeGlobals = {
     Buffer: 'readonly',
     console: 'readonly',
+    fetch: 'readonly',
     process: 'readonly',
     setTimeout: 'readonly',
     URL: 'readonly'
