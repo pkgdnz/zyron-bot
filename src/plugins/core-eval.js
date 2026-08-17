@@ -1,7 +1,7 @@
 import util from 'node:util';
 import { isOwner } from '../owner.js';
 
-const run = async ({ m, q, text }) => {
+const run = async ({ m, q, text, sock, jid }) => {
    if (!isOwner(m)) return;
 
    const target = q || m;
@@ -13,11 +13,11 @@ const run = async ({ m, q, text }) => {
          result = util.inspect(result);
       }
 
-      return await target.reply(result);
+      return await sock.message.send(jid, result, { quote: target });
    } catch (err) {
       console.error(err);
 
-      return await target.reply(err.message);
+      return await sock.message.send(jid, err.message, { quote: target });
    }
 };
 

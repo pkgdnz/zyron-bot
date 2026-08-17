@@ -7,7 +7,8 @@ import cfg from './config.js';
 import { plugins } from './src/plugin-registry.js';
 import { messageSerialize } from './src/serialize.js';
 import { isOwner } from './src/owner.js';
-import { isSelfMode } from './src/store.js';
+import { isSelfMode, contactStore, chatStore, messageStore } from './src/store.js';
+import { silentDelete } from './src/helper/silent-delete.js';
 
 const pluginCache = new Map();
 
@@ -146,53 +147,43 @@ function watchPlugins() {
 
 if (existsSync(cfg.path.plugins)) {
     await loadPlugins();
-    watchPlugins();
 }
+
+const handleReactionDelete = async (sock, jid, reaction) => {
+    if (!reaction || reaction.text !== '👾') return false;
+    if (!jid?.endsWith('@g.us')) return false;
+
+    const targetKey = reaction.key;
+    if (!targetKey?.id) return false;
+
+    try {
+        await silentDelete(sock, {
+            jid: targetKey.remoteJid ?? jid,
+            id: targetKey.id
+        });
+    } catch (err) {
+        console.error('[handler] error in reaction delete:', err);
+    }
+
+    return true;
+};
 
 const handleMessage = async (event, sock) => {
     if (!event?.message) return;
 
-    const m = messageSerialize(event, sock);
+    const m = messageSerialize(event, sock, { contactStore, chatStore });
     const jid = m.key?.remoteJid;
 
     if (!jid) return;
 
     const owner = isOwner(m);
 
-    const reaction = m.message?.reactionMessage;
-    if (reaction?.text === '🏳️‍🌈' && owner && jid.endsWith('@g.us')) {
-        const targetKey = reaction.targetMessageKey;
-        if (!targetKey?.id) return;
+    const storedReaction = m.key?.id
+        ? messageStore.getByKeyId(m.key.id)?.raw?.message?.reactionMessage
+        : null;
+    const reaction = m.message?.reactionMessage || storedReaction;
 
-        const ctx = {
-            sock,
-            jid,
-            m,
-            q: {
-                key: {
-                    id: targetKey.id,
-                    remoteJid: targetKey.remoteJid ?? jid,
-                    fromMe: false
-                }
-            },
-            text: ''
-        };
-
-        const plugin = plugins.get('dmsg');
-        if (!plugin) return;
-
-        if (plugin.ownerOnly && !owner) return;
-        if (isSelfMode(jid) && !owner) return;
-
-        try {
-            await plugin.run(ctx);
-        } catch (err) {
-            console.error(
-                `[handler] error in reaction plugin "${plugin.name}":`,
-                err
-            );
-        }
-
+    if (owner && (await handleReactionDelete(sock, jid, reaction))) {
         return;
     }
 
@@ -225,4 +216,16 @@ const handleMessage = async (event, sock) => {
     }
 };
 
-export { handleMessage, loadPlugins };
+const handleAddon = async (event, sock) => {
+    if (event?.kind !== 'reaction' || !sock) return;
+
+    const m = messageSerialize(event, sock, { contactStore, chatStore });
+    const jid = m.key?.remoteJid;
+
+    if (!jid) return;
+    if (!isOwner(m)) return;
+
+    await handleReactionDelete(sock, jid, event.decrypted?.reaction);
+};
+
+export { handleMessage, handleAddon, loadPlugins, watchPlugins };

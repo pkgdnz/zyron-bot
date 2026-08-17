@@ -86,8 +86,9 @@ Semua plugin bawaan saat ini menggunakan kategori `core`.
 | `menu` | Tidak | Menampilkan kategori command yang tersedia. |
 | `menu <category>` | Tidak | Menampilkan command dalam kategori tertentu. |
 | `menu all` | Tidak | Menampilkan seluruh command berdasarkan kategori. |
-| `cms` | Tidak | Membuat kode JavaScript reproduksi dari pesan yang di-reply. |
-| `theme` | Tidak | Mengatur konfigurasi theme menu. |
+| `cms` | Ya | Membuat kode JavaScript reproduksi dari pesan yang di-reply (menggunakan API `message.send` Zapo JS). |
+| `cat` | Ya | Mengirim isi file dari dokumen yang di-reply ke chat. |
+| `theme` | Ya | Mengatur konfigurasi theme menu. |
 | `self on` | Ya | Mengaktifkan self mode global. |
 | `self off` | Ya | Menonaktifkan self mode global. |
 | `self -gc on` | Ya | Mengaktifkan self mode untuk group saat ini. |
@@ -96,9 +97,9 @@ Semua plugin bawaan saat ini menggunakan kategori `core`.
 | `!!` | Ya | Menjalankan JavaScript async melalui `eval`. |
 | `run` | Ya | Menjalankan JavaScript async dari teks atau dokumen `.js` yang di-reply. |
 | `$` | Ya | Menjalankan command shell pada host bot. |
-| `fakemsg`, `fake`, `fakeedit` | Ya | Fitur fake edit untuk pesan di group. |
+| `fmsg` | Ya | Fitur fake edit untuk pesan di group. |
 
-Command `fakemsg` juga memeriksa bahwa command dijalankan di group dan memiliki pesan yang di-reply.
+Command `fmsg` juga memeriksa bahwa command dijalankan di group dan memiliki pesan yang di-reply.
 
 ## Menu dan theme
 
@@ -145,6 +146,15 @@ theme preview                    # masih WIP
 ```
 
 Thumbnail dan favicon dapat berasal dari URL atau media gambar yang tersedia pada pesan. Data theme disimpan sebagai satu record pada tabel `theme`.
+
+## Command `cms`
+
+`cms` membuat kode JavaScript reproduksi dari pesan yang di-reply, lalu mengirimkan kode tersebut sebagai dokumen `.js` dan mereproduksi pesan aslinya di chat. Kode yang dihasilkan memakai API `message.send` Zapo JS (`{ type: 'text' }`, `{ type: 'image', media, mimetype, caption }`, dst.) sehingga bisa langsung dipakai di plugin lain.
+
+- Untuk pesan teks, kode dibuat self-contained (teks + mention disertakan).
+- Untuk pesan media (image, video, audio, document, sticker, ptv), media diunduh lalu disematkan sebagai base64 di dalam kode. Jika media lebih besar dari `8 MB`, kode otomatis mengunduh media dari pesan yang di-reply saat dijalankan (`sock.message.downloadBytes(q.message)`).
+- Untuk pesan yang membutuhkan atribut stanza tambahan, kode ikut menyertakan opsi send. Contohnya `botForwardedMessage` (wrapper future-proof yang berisi pesan asli) di-generate lengkap beserta `{ additionalAttributes: { type: 'text' } }` agar stanza type-nya benar; opsi `customNodes` juga didukung bila diperlukan.
+- Format pesan lain (lokasi, kontak, poll, interactive, dll.) di-generate sebagai proto mentah agar tetap bisa dikirim ulang. Metadata runtime per-pengiriman seperti `messageContextInfo` (`messageSecret`, `threadId`, `limitSharingV2`, `deviceListMetadata`) otomatis dibuang karena terikat ke pesan asli dan akan di-generate ulang oleh library saat dikirim — menyertakannya bisa membuat pesan hasil reproduksi ditolak atau tampil sebagai pesan tidak didukung.
 
 ## Plugin system
 
@@ -288,23 +298,34 @@ zyron-bot/
 │   ├── message-resolve.js
 │   ├── owner.js
 │   ├── plugin-registry.js
+│   ├── db.js
+│   ├── helper/
+│   │   └── silent-delete.js
+│   ├── helpers.js
+│   ├── message-resolve.js
+│   ├── owner.js
+│   ├── plugin-registry.js
 │   ├── plugins/
-│   │   ├── cms.js
-│   │   ├── core-theme.js
-│   │   ├── eval-async.js
-│   │   ├── eval.js
-│   │   ├── fakemsg.js
-│   │   ├── mem.js
-│   │   ├── menu.js
-│   │   ├── ping.js
-│   │   ├── run.js
-│   │   ├── self.js
-│   │   └── shell.js
+│   │   ├── core-cat.js
+│   │   ├── core-cms.js
+│   │   ├── core-eval.js
+│   │   ├── core-eval-async.js
+│   │   ├── core-fmsg.js
+│   │   ├── core-mem.js
+│   │   ├── core-menu.js
+│   │   ├── core-ping.js
+│   │   ├── core-run.js
+│   │   ├── core-self.js
+│   │   ├── core-shell.js
+│   │   └── core-theme.js
 │   ├── serialize.js
 │   ├── store.js
 │   └── theme-manager.js
 └── tests/
+    ├── cat.test.js
+    ├── cms.test.js
     ├── fakemsg.test.js
+    ├── handler-reaction.test.js
     ├── message-resolve.test.js
     └── serialize.test.js
 ```
@@ -389,9 +410,7 @@ Directory `data/` merupakan runtime data lokal dan seharusnya tidak dipublikasik
 
 Dokumentasi ini disesuaikan dengan file yang saat ini berada di branch `master`.
 
-Perlu diperhatikan bahwa `handler.js` dan `main.js` pada keadaan repository saat ini masih mengimpor beberapa path seperti `src/serialize/serialize.js`, `src/self-store.js`, dan `src/serialize/contact.js`, sedangkan struktur `src/` yang tersedia di branch `master` menggunakan file seperti `src/serialize.js` dan `src/store.js`. Artinya terdapat ketidaksesuaian struktur source yang terpisah dari perubahan README ini dan perlu dibereskan agar runtime dapat berjalan konsisten.
-
-README ini tidak menganggap CI atau runtime sedang berhasil hanya berdasarkan konfigurasi file; validasi aktual tetap harus dilakukan dengan `npm run lint`, `npm test`, dan menjalankan bot setelah dependency terpasang.
+Source saat ini menggunakan struktur flat di `src/` (`src/serialize.js`, `src/store.js`, `src/helper/`), dan `handler.js` / `main.js` sudah mengimpor path tersebut secara konsisten. Validasi aktual tetap harus dilakukan dengan `npm run lint`, `npm test`, dan menjalankan bot setelah dependency terpasang.
 
 ## License
 

@@ -138,6 +138,10 @@ class ChatStore {
         console.log(`[chat-store] loaded ${this.#map.size} chats`);
     }
 
+    getById(jid) {
+        return this.#map.get(jid);
+    }
+
     upsertAndGet({ jid, name } = {}) {
         if (!jid) return;
 

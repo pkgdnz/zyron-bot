@@ -133,7 +133,19 @@ const contactSerialize = event => {
     };
 };
 
-const quotedSerialize = (event, sock) => {
+function resolveContactFromStore(key, contactStore) {
+    if (!key || !contactStore) return null;
+
+    const { lid, pn } = key.isGroup
+        ? resolveJidPair(key.participant, key.participantAlt)
+        : resolveJidPair(key.remoteJid, key.remoteJidAlt);
+
+    if (lid) return contactStore.getByLid(lid);
+    if (pn) return contactStore.getByPn(pn);
+    return null;
+}
+
+const quotedSerialize = (event, sock, stores) => {
     const message = unwrapMessage(event.message ?? {});
 
     const content = getContentType(message);
@@ -151,7 +163,8 @@ const quotedSerialize = (event, sock) => {
             participant: contextInfo?.participant,
             remoteJid: event.key.remoteJid,
             fromMe: false,
-            participantAlt: contextInfo?.participantAlt
+            participantAlt: contextInfo?.participantAlt,
+            isGroup: event.key?.isGroup
         },
         message: quotedMessage,
         content: quotedContent,
@@ -163,6 +176,17 @@ const quotedSerialize = (event, sock) => {
             null
     };
 
+    const dbContact = resolveContactFromStore(q.key, stores?.contactStore);
+    if (dbContact) {
+        q.contact = {
+            id: dbContact.id ?? null,
+            lid: dbContact.lid ?? null,
+            pn: dbContact.pn ?? null,
+            pushName: dbContact.pushName ?? null,
+            updatedAt: dbContact.updatedAt ?? null
+        };
+    }
+
     Object.defineProperty(q, 'sock', {
         value: sock,
         enumerable: false
@@ -173,10 +197,18 @@ const quotedSerialize = (event, sock) => {
         enumerable: false
     });
 
+    Object.defineProperty(q, Symbol.toPrimitive, {
+        value(hint) {
+            if (hint === 'number') return this.key?.id ? 1 : 0;
+            return this.key?.id ? `[Quoted ${this.key.id}]` : '[Quoted empty]';
+        },
+        enumerable: false
+    });
+
     return q;
 };
 
-const messageSerialize = (event, sock) => {
+const messageSerialize = (event, sock, stores) => {
     const m = { ...event };
 
     const chatBase = chatSerialize(m);
@@ -184,6 +216,29 @@ const messageSerialize = (event, sock) => {
 
     const contactBase = contactSerialize(m);
     if (contactBase) m.contact = contactBase;
+
+    if (stores?.contactStore) {
+        const dbContact = resolveContactFromStore(m.key, stores.contactStore);
+        if (dbContact) {
+            m.contact = {
+                id: dbContact.id ?? null,
+                lid: dbContact.lid ?? m.contact?.lid ?? null,
+                pn: dbContact.pn ?? m.contact?.pn ?? null,
+                pushName: dbContact.pushName ?? m.contact?.pushName ?? null,
+                updatedAt: dbContact.updatedAt ?? m.contact?.updatedAt ?? null
+            };
+        }
+    }
+
+    if (typeof stores?.chatStore?.getById === 'function' && m.key?.remoteJid) {
+        const dbChat = stores.chatStore.getById(m.key.remoteJid);
+        if (dbChat) {
+            m.chat = {
+                jid: dbChat.jid ?? m.chat?.jid ?? m.key.remoteJid,
+                name: dbChat.name ?? m.chat?.name ?? null
+            };
+        }
+    }
 
     m.sender =
         m.contact?.lid ?? m.key?.participant ?? m.key?.remoteJid;
@@ -211,7 +266,15 @@ const messageSerialize = (event, sock) => {
         enumerable: false
     });
 
-    m.quoted = quotedSerialize(m, sock);
+    Object.defineProperty(m, Symbol.toPrimitive, {
+        value(hint) {
+            if (hint === 'number') return 1;
+            return `[Message id=${this.key?.id ?? '?'} remoteJid=${this.key?.remoteJid ?? '?'}]`;
+        },
+        enumerable: false
+    });
+
+    m.quoted = quotedSerialize(m, sock, stores);
 
     return m;
 };

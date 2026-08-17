@@ -7,7 +7,7 @@ import { WebSocket } from 'ws';
 import cfg from './config.js';
 
 import { contactStore, messageStore, bindGroupEvents, fetchAllGroups } from './src/store.js';
-import { handleMessage } from './handler.js';
+import { handleMessage, handleAddon, watchPlugins } from './handler.js';
 import {
     serializeContactFromMessage,
     serializeSelfContact
@@ -29,6 +29,15 @@ function bindStoreEvents(sock) {
         if (contact) contactStore.upsertAndGet(contact);
 
         void handleMessage(event, sock);
+    });
+
+    sock.on('message_addon', event => {
+        messageStore.insert(event);
+
+        const contact = serializeContactFromMessage(event);
+        if (contact) contactStore.upsertAndGet(contact);
+
+        void handleAddon(event, sock);
     });
 
     bindGroupEvents(sock);
@@ -108,6 +117,10 @@ async function start() {
             history: {
                 enabled: true,
                 requireFullSync: true
+            },
+            addons: {
+                autoDecrypt: true,
+                persistAllSecrets: true
             }
         },
         logger
@@ -139,5 +152,7 @@ async function start() {
 
     await sock.connect();
 }
+
+watchPlugins();
 
 await start();
